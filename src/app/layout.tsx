@@ -2,6 +2,7 @@ import './globals.css'
 import { ThemeProvider } from "next-themes"
 import type { ReactNode } from "react"
 import { Toaster } from "sonner"
+import { AuthProvider } from "@/context/AuthContext"
 
 export const metadata = {
   title: 'MHomes - Luxury Resort & Spa',
@@ -27,7 +28,9 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           enableSystem
           disableTransitionOnChange
         >
-          {children}
+          <AuthProvider>
+            {children}
+          </AuthProvider>
           <Toaster />
         </ThemeProvider>
       </body>
