@@ -5,7 +5,6 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
 import { motion, AnimatePresence } from 'framer-motion'
-import { useAuth } from '@/context/AuthContext'
 import { roomsApi, bookingsApi } from '@/lib/api'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -18,6 +17,26 @@ import {
 } from 'lucide-react'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
+
+interface AssignedRoom {
+  id: number
+  roomNumber: string
+  roomType: string
+  pricePerNight: number
+}
+
+interface SearchResult {
+  available: boolean
+  substitution: boolean
+  substitutionMessage: string | null
+  message?: string
+  assignedRooms?: AssignedRoom[]
+  checkIn?: string
+  checkOut?: string
+  nights?: number
+  totalPerNight?: number
+  totalAmount?: number
+}
 
 interface RoomData {
   id: number
@@ -45,12 +64,6 @@ interface AvailabilityResult {
   roomsByType: RoomsByType
 }
 
-interface Member {
-  memberName: string
-  age: string
-  relation: string
-}
-
 interface BookingResult {
   bookingId: number
   bookingStatus: string
@@ -75,6 +88,18 @@ const formatRoomType = (type: string) => {
     premium_plus: 'Premium Plus',
   }
   return map[type] || type
+}
+
+// Helper to group rooms by type and show quantity
+const getRoomSummary = (rooms: AssignedRoom[] | undefined): string => {
+  if (!rooms || rooms.length === 0) return ''
+  const grouped: { [key: string]: number } = {}
+  rooms.forEach(room => {
+    grouped[room.roomType] = (grouped[room.roomType] || 0) + 1
+  })
+  return Object.entries(grouped)
+    .map(([type, count]) => `${count} ${formatRoomType(type)}${count > 1 ? 's' : ''}`)
+    .join(', ')
 }
 
 // ─── Step Indicator ──────────────────────────────────────────────────────────
@@ -118,7 +143,6 @@ function StepIndicator({ current }: { current: number }) {
 export default function ReservationPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const { user, isAuthenticated } = useAuth()
 
   const [step, setStep] = useState(1)
   const [loading, setLoading] = useState(false)
@@ -127,24 +151,21 @@ export default function ReservationPage() {
   // Step 1 state
   const [checkIn, setCheckIn] = useState(searchParams.get('checkIn') || '')
   const [checkOut, setCheckOut] = useState(searchParams.get('checkOut') || '')
-  const [guests, setGuests] = useState(Number(searchParams.get('guests')) || 2)
-  const [availability, setAvailability] = useState<AvailabilityResult | null>(null)
-
-  // Step 2 state
-  const [selectedRooms, setSelectedRooms] = useState<RoomData[]>([])
+  const [roomType, setRoomType] = useState<'premium' | 'premium_plus'>((searchParams.get('roomType') as 'premium' | 'premium_plus') || 'premium')
+  const [roomCount, setRoomCount] = useState(Number(searchParams.get('roomCount')) || 1)
+  
+  // Step 2 state - search result from the new API
+  const [searchResult, setSearchResult] = useState<SearchResult | null>(null)
 
   // Step 3 state
   const [fullName, setFullName] = useState('')
   const [phone, setPhone] = useState('')
   const [email, setEmail] = useState('')
-  const [address, setAddress] = useState('')
-  const [idProofType, setIdProofType] = useState('')
-  const [members, setMembers] = useState<Member[]>([])
   const [bookingResult, setBookingResult] = useState<BookingResult | null>(null)
 
-  // Pre-fill from URL if step=2 was passed
+  // Auto-trigger search if query params present on load
   useEffect(() => {
-    if (searchParams.get('step') === '2' && checkIn && checkOut) {
+    if (searchParams.get('checkIn') && searchParams.get('checkOut') && searchParams.get('roomType') && searchParams.get('roomCount')) {
       handleSearch()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -160,35 +181,27 @@ export default function ReservationPage() {
       setError('Check-out must be after check-in.')
       return
     }
+    
     setError(null)
     setLoading(true)
     try {
-      const res = await roomsApi.getAvailableRooms(checkIn, checkOut, guests)
-      const data: AvailabilityResult = res.data.data
-      if (data.totalAvailable === 0) {
-        setError('No rooms available for the selected dates. Please try different dates.')
+      const res = await roomsApi.searchRooms(checkIn, checkOut, roomType, roomCount)
+      const result: SearchResult = res.data.data
+      
+      if (!result.available) {
+        setError(result.message || 'No rooms available for the selected dates.')
         return
       }
-      setAvailability(data)
-      setSelectedRooms([])
+
+      setSearchResult(result)
       setStep(2)
     } catch (err: any) {
-      setError(err?.response?.data?.message || 'Failed to check availability. Please try again.')
+      const errorMsg = err?.response?.data?.message || err?.message || 'Failed to search rooms. Please try again.'
+      setError(errorMsg)
     } finally {
       setLoading(false)
     }
   }
-
-  // ── Step 2: Room selection ───────────────────────────────────────────────
-  const toggleRoom = (room: RoomData) => {
-    setSelectedRooms(prev =>
-      prev.find(r => r.id === room.id)
-        ? prev.filter(r => r.id !== room.id)
-        : [...prev, room]
-    )
-  }
-
-  const totalSelected = selectedRooms.reduce((sum, r) => sum + r.totalPrice, 0)
 
   // ── Step 3: Create booking ───────────────────────────────────────────────
   const handleCreateBooking = async (e: React.FormEvent) => {
@@ -196,38 +209,31 @@ export default function ReservationPage() {
     setError(null)
     setLoading(true)
     try {
+      if (!searchResult?.assignedRooms) {
+        throw new Error('No rooms selected')
+      }
+
       const payload = {
         fullName,
         phone,
-        email: email || undefined,
-        address: address || undefined,
-        idProofType: idProofType || undefined,
-        members: members.filter(m => m.memberName.trim()).map(m => ({
-          memberName: m.memberName,
-          age: m.age ? parseInt(m.age) : undefined,
-          relation: m.relation || undefined,
-        })),
-        roomIds: selectedRooms.map(r => r.id),
-        checkIn: availability!.checkIn,
-        checkOut: availability!.checkOut,
-        totalGuests: guests,
-        bookingSource: isAuthenticated ? 'online' : 'offline',
+        email,
+        members: [],
+        roomIds: searchResult.assignedRooms.map(r => r.id),
+        checkIn: searchResult.checkIn,
+        checkOut: searchResult.checkOut,
+        totalGuests: searchResult.assignedRooms.length,
+        bookingSource: 'online' as const,
         notes: '',
       }
       const res = await bookingsApi.createBooking(payload as any)
       setBookingResult(res.data.data)
     } catch (err: any) {
-      setError(err?.response?.data?.message || 'Failed to create booking. Please try again.')
+      const errorMsg = err?.response?.data?.message || err?.message || 'Failed to create booking. Please try again.'
+      setError(errorMsg)
     } finally {
       setLoading(false)
     }
   }
-
-  // ── Members helpers ──────────────────────────────────────────────────────
-  const addMember = () => setMembers(prev => [...prev, { memberName: '', age: '', relation: '' }])
-  const removeMember = (i: number) => setMembers(prev => prev.filter((_, idx) => idx !== i))
-  const updateMember = (i: number, field: keyof Member, value: string) =>
-    setMembers(prev => prev.map((m, idx) => idx === i ? { ...m, [field]: value } : m))
 
   const today = new Date().toISOString().split('T')[0]
 
@@ -248,7 +254,7 @@ export default function ReservationPage() {
             </span>
           </Link>
           <span className="text-stone-400 text-sm">
-            {isAuthenticated ? `Welcome, ${user?.name?.split(' ')[0]}` : 'Book Your Stay'}
+            Book Your Stay
           </span>
         </div>
       </div>
@@ -268,9 +274,9 @@ export default function ReservationPage() {
               </div>
             </div>
             <h1 className="text-3xl font-light text-amber-100 mb-2" style={{ fontFamily: 'Playfair Display, serif' }}>
-              Request Sent!
+              Booking Confirmed!
             </h1>
-            <p className="text-stone-400 mb-2">Your room block request has been received.</p>
+            <p className="text-stone-400 mb-2">Your reservation has been confirmed successfully.</p>
 
             <Card className="bg-stone-900 border-stone-800 max-w-md mx-auto my-8">
               <CardContent className="p-6 space-y-3 text-left">
@@ -282,14 +288,14 @@ export default function ReservationPage() {
                 <Detail label="Rooms" value={bookingResult.rooms.map(r => r.roomNumber).join(', ')} />
                 <div className="border-t border-stone-800 pt-3">
                   <Detail label="Total Amount" value={formatRs(bookingResult.totalAmount)} highlight />
-                  <Detail label="Status" value="Pending" />
+                  <Detail label="Status" value="Confirmed" />
                 </div>
               </CardContent>
             </Card>
 
             <div className="flex items-center justify-center gap-2 text-stone-400 text-sm mb-6">
               <PhoneCall className="w-4 h-4 text-amber-500" />
-              Our team will contact you shortly to confirm your booking and collect payment.
+              Your booking is confirmed! Our team will contact you shortly with further details.
             </div>
 
             <Link href="/">
@@ -357,18 +363,35 @@ export default function ReservationPage() {
                           </div>
                         </div>
 
-                        <div className="space-y-1.5">
-                          <Label className="text-stone-400 text-sm flex items-center gap-1.5">
-                            <Users className="w-3.5 h-3.5" /> Guests
-                          </Label>
-                          <Input
-                            type="number"
-                            min={1}
-                            max={10}
-                            value={guests}
-                            onChange={e => setGuests(Number(e.target.value))}
-                            className="bg-stone-800 border-stone-700 text-stone-100 focus:border-amber-500 max-w-xs"
-                          />
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          <div className="space-y-1.5">
+                            <Label className="text-stone-400 text-sm">Room Type</Label>
+                            <select
+                              value={roomType}
+                              onChange={e => setRoomType(e.target.value as 'premium' | 'premium_plus')}
+                              className="rounded-lg px-3 sm:px-4 py-2 sm:py-3 bg-stone-800 border border-stone-700 text-stone-100 focus:border-amber-500 focus:outline-none transition-all cursor-pointer w-full"
+                            >
+                              <option value="premium">Premium (₹5,500/night)</option>
+                              <option value="premium_plus">Premium Plus (₹6,500/night)</option>
+                            </select>
+                          </div>
+                          <div className="space-y-1.5">
+                            <Label className="text-stone-400 text-sm flex items-center gap-1.5">
+                              <BedDouble className="w-3.5 h-3.5" /> Number of Rooms
+                            </Label>
+                            <select
+                              value={roomCount}
+                              onChange={e => setRoomCount(Number(e.target.value))}
+                              className="rounded-lg px-3 sm:px-4 py-2 sm:py-3 bg-stone-800 border border-stone-700 text-stone-100 focus:border-amber-500 focus:outline-none transition-all cursor-pointer w-full"
+                            >
+                              <option value={1}>1 Room</option>
+                              <option value={2}>2 Rooms</option>
+                              <option value={3}>3 Rooms</option>
+                              <option value={4}>4 Rooms</option>
+                              <option value={5}>5 Rooms</option>
+                              <option value={6}>6 Rooms</option>
+                            </select>
+                          </div>
                         </div>
 
                         {error && <ErrorBox message={error} />}
@@ -379,7 +402,7 @@ export default function ReservationPage() {
                           className="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-semibold py-3"
                         >
                           {loading ? (
-                            <><Loader2 className="w-4 h-4 animate-spin mr-2" /> Checking…</>
+                            <><Loader2 className="w-4 h-4 animate-spin mr-2" /> Searching…</>
                           ) : (
                             <><Search className="w-4 h-4 mr-2" /> Check Availability</>
                           )}
@@ -389,209 +412,127 @@ export default function ReservationPage() {
                   </Card>
                 )}
 
-                {/* ─── STEP 2: SELECT ROOMS ───────────────────────────────── */}
-                {step === 2 && availability && (
+                {/* ─── STEP 2: RESULTS DISPLAY ────────────────────────────── */}
+                {step === 2 && searchResult && (
                   <div className="space-y-6">
                     {/* Dates summary */}
                     <div className="flex flex-wrap items-center gap-4 text-sm text-stone-400 bg-stone-900/60 rounded-xl px-5 py-3 border border-stone-800">
-                      <span className="flex items-center gap-1.5"><CalendarDays className="w-4 h-4 text-amber-500" />{availability.checkIn} → {availability.checkOut}</span>
-                      <span className="flex items-center gap-1.5"><Users className="w-4 h-4 text-amber-500" />{availability.guestsRequested} guest{availability.guestsRequested > 1 ? 's' : ''}</span>
-                      <span className="text-amber-400 font-medium">{availability.nights} night{availability.nights > 1 ? 's' : ''}</span>
+                      <span className="flex items-center gap-1.5"><CalendarDays className="w-4 h-4 text-amber-500" />{searchResult.checkIn} → {searchResult.checkOut}</span>
+                      <span className="text-amber-400 font-medium">{searchResult.nights} night{searchResult.nights !== 1 ? 's' : ''}</span>
                       <button onClick={() => setStep(1)} className="ml-auto text-stone-500 hover:text-stone-300 text-xs flex items-center gap-1">
-                        <ArrowLeft className="w-3 h-3" /> Modify
+                        <ArrowLeft className="w-3 h-3" /> Change Search
                       </button>
                     </div>
 
-                    <h2 className="text-lg font-semibold text-stone-100 flex items-center gap-2">
-                      <BedDouble className="w-5 h-5 text-amber-500" />
-                      {availability.totalAvailable} rooms available — select yours
-                    </h2>
+                    {/* Substitution warning */}
+                    {searchResult.substitution && searchResult.substitutionMessage && (
+                      <motion.div
+                        initial={{ opacity: 0, y: -4 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="flex items-start gap-2 rounded-lg bg-yellow-950/60 border border-yellow-800/60 px-4 py-3"
+                      >
+                        <AlertCircle className="w-4 h-4 text-yellow-400 mt-0.5 shrink-0" />
+                        <p className="text-yellow-300 text-sm">{searchResult.substitutionMessage}</p>
+                      </motion.div>
+                    )}
 
-                    {/* Room cards grouped by type */}
-                    {Object.entries(availability.roomsByType).map(([type, group]) => (
-                      <div key={type}>
-                        <h3 className="text-amber-400 font-medium text-sm uppercase tracking-widest mb-3">
-                          {formatRoomType(type)} — {formatRs(group.pricePerNight)}/night
-                        </h3>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                          {group.rooms.map(room => {
-                            const isSelected = !!selectedRooms.find(r => r.id === room.id)
-                            return (
-                              <motion.div
-                                key={room.id}
-                                whileHover={{ y: -2 }}
-                                onClick={() => toggleRoom(room)}
-                                className={`cursor-pointer rounded-xl border p-5 transition-all duration-200 ${isSelected
-                                  ? 'border-amber-500 bg-amber-500/10 shadow-lg shadow-amber-500/10'
-                                  : 'border-stone-800 bg-stone-900 hover:border-stone-700'
-                                  }`}
-                              >
-                                <div className="flex items-start justify-between mb-3">
+                    {/* Assigned rooms display */}
+                    <div>
+                      <h2 className="text-lg font-semibold text-stone-100 flex items-center gap-2 mb-4">
+                        <BedDouble className="w-5 h-5 text-amber-500" />
+                        Selected Rooms
+                      </h2>
+                      {searchResult.assignedRooms && searchResult.assignedRooms.length > 0 ? (
+                        <div className="bg-stone-900 border border-stone-800 rounded-xl p-5">
+                          <div className="space-y-3">
+                            {(() => {
+                              const grouped: { [key: string]: number } = {}
+                              searchResult.assignedRooms?.forEach(room => {
+                                grouped[room.roomType] = (grouped[room.roomType] || 0) + 1
+                              })
+                              return Object.entries(grouped).map(([type, count]) => (
+                                <motion.div
+                                  key={type}
+                                  initial={{ opacity: 0, x: -10 }}
+                                  animate={{ opacity: 1, x: 0 }}
+                                  className="flex items-center justify-between p-3 bg-stone-800/50 rounded-lg border border-stone-700/50"
+                                >
                                   <div>
-                                    <p className="font-semibold text-stone-100">Room {room.roomNumber}</p>
-                                    <p className="text-xs text-stone-500 mt-0.5">{formatRoomType(type)}</p>
+                                    <p className="font-medium text-stone-100">{formatRoomType(type)}</p>
+                                    <p className="text-xs text-stone-500">Qty: {count}</p>
                                   </div>
-                                  <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${isSelected ? 'border-amber-500 bg-amber-500' : 'border-stone-600'
-                                    }`}>
-                                    {isSelected && <Check className="w-3 h-3 text-white" />}
-                                  </div>
-                                </div>
-                                <p className="text-stone-400 text-sm mb-3">{room.description}</p>
-                                <div className="flex items-center justify-between text-sm">
-                                  <span className="text-stone-500 flex items-center gap-1">
-                                    <Users className="w-3.5 h-3.5" /> Up to {room.maxGuests}
-                                  </span>
                                   <div className="text-right">
-                                    <p className="text-amber-400 font-semibold">{formatRs(room.totalPrice)}</p>
-                                    <p className="text-stone-600 text-xs">{formatRs(room.pricePerNight)}/night</p>
+                                    <p className="text-amber-400 font-semibold">₹{searchResult.assignedRooms?.filter(r => r.roomType === type)[0]?.pricePerNight || 0}/night</p>
                                   </div>
-                                </div>
-                              </motion.div>
-                            )
-                          })}
+                                </motion.div>
+                              ))
+                            })()}
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      ) : (
+                        <p className="text-stone-500 text-sm">No rooms assigned</p>
+                      )}
+                    </div>
 
-                    {/* Selection summary */}
-                    <div className="sticky bottom-4 mt-4">
-                      <div className="bg-stone-900/95 border border-stone-700 rounded-xl px-5 py-4 backdrop-blur-sm flex items-center justify-between gap-4">
-                        <div>
-                          {selectedRooms.length === 0 ? (
-                            <p className="text-stone-500 text-sm">Select at least one room to continue</p>
-                          ) : (
-                            <>
-                              <p className="text-stone-300 text-sm font-medium">
-                                {selectedRooms.length} room{selectedRooms.length > 1 ? 's' : ''} selected:
-                                {' '}{selectedRooms.map(r => r.roomNumber).join(', ')}
-                              </p>
-                              <p className="text-amber-400 font-bold text-lg">{formatRs(totalSelected)}</p>
-                            </>
-                          )}
-                        </div>
-                        <Button
-                          disabled={selectedRooms.length === 0}
-                          onClick={() => setStep(3)}
-                          className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white shrink-0"
-                        >
-                          Continue <ChevronRight className="w-4 h-4 ml-1" />
-                        </Button>
+                    {/* Pricing summary */}
+                    <div className="bg-stone-900/60 border border-stone-800 rounded-xl px-5 py-4 text-sm">
+                      <div className="flex flex-wrap gap-x-6 gap-y-2 text-stone-400">
+                        <span>Nights: <span className="text-stone-200 font-medium">{searchResult.nights}</span></span>
+                        <span>Per Night: <span className="text-stone-200 font-medium">{formatRs(searchResult.totalPerNight || 0)}</span></span>
+                        <span>Total: <span className="text-amber-400 font-bold text-base">{formatRs(searchResult.totalAmount || 0)}</span></span>
                       </div>
+                    </div>
+
+                    {/* Action buttons */}
+                    <div className="flex gap-3">
+                      <Button type="button" variant="outline" onClick={() => setStep(1)}
+                        className="flex-1 border-stone-700 text-stone-400 hover:border-stone-600">
+                        <ArrowLeft className="w-4 h-4 mr-1" /> Change Search
+                      </Button>
+                      <Button type="button" onClick={() => setStep(3)}
+                        className="flex-1 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-semibold">
+                        Accept & Continue <ChevronRight className="w-4 h-4 ml-1" />
+                      </Button>
                     </div>
                   </div>
                 )}
 
                 {/* ─── STEP 3: GUEST DETAILS ──────────────────────────────── */}
-                {step === 3 && (
+                {step === 3 && searchResult && (
                   <form onSubmit={handleCreateBooking} className="max-w-2xl mx-auto space-y-6">
                     <Card className="bg-stone-900 border-stone-800">
                       <CardContent className="p-6 space-y-5">
-                        <h2 className="text-lg font-semibold text-stone-100">Primary Guest</h2>
+                        <h2 className="text-lg font-semibold text-stone-100">Your Details</h2>
 
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                          <div className="space-y-1.5 sm:col-span-2">
+                        <div className="grid grid-cols-1 gap-4">
+                          <div className="space-y-1.5">
                             <Label className="text-stone-400 text-sm">Full Name <span className="text-amber-500">*</span></Label>
                             <Input required value={fullName} onChange={e => setFullName(e.target.value)}
-                              placeholder="As on ID proof"
+                              placeholder="Your full name"
                               className="bg-stone-800 border-stone-700 text-stone-100 focus:border-amber-500" />
                           </div>
                           <div className="space-y-1.5">
                             <Label className="text-stone-400 text-sm">Phone <span className="text-amber-500">*</span></Label>
                             <Input required type="tel" value={phone} onChange={e => setPhone(e.target.value)}
-                              placeholder="10-digit mobile"
+                              placeholder="10-digit mobile number"
                               className="bg-stone-800 border-stone-700 text-stone-100 focus:border-amber-500" />
                           </div>
                           <div className="space-y-1.5">
-                            <Label className="text-stone-400 text-sm">Email <span className="text-stone-600 text-xs">(optional)</span></Label>
-                            <Input type="email" value={email} onChange={e => setEmail(e.target.value)}
-                              placeholder="you@example.com"
+                            <Label className="text-stone-400 text-sm">Email <span className="text-amber-500">*</span></Label>
+                            <Input required type="email" value={email} onChange={e => setEmail(e.target.value)}
+                              placeholder="your@email.com"
                               className="bg-stone-800 border-stone-700 text-stone-100 focus:border-amber-500" />
                           </div>
-                          <div className="space-y-1.5 sm:col-span-2">
-                            <Label className="text-stone-400 text-sm">Address <span className="text-stone-600 text-xs">(optional)</span></Label>
-                            <Input value={address} onChange={e => setAddress(e.target.value)}
-                              placeholder="City, State"
-                              className="bg-stone-800 border-stone-700 text-stone-100 focus:border-amber-500" />
-                          </div>
-                          <div className="space-y-1.5 sm:col-span-2">
-                            <Label className="text-stone-400 text-sm">ID Proof Type <span className="text-stone-600 text-xs">(optional)</span></Label>
-                            <select
-                              value={idProofType}
-                              onChange={e => setIdProofType(e.target.value)}
-                              className="w-full rounded-md px-3 py-2 bg-stone-800 border border-stone-700 text-stone-100 focus:border-amber-500 focus:outline-none text-sm"
-                            >
-                              <option value="">Select ID proof</option>
-                              <option value="aadhaar">Aadhaar Card</option>
-                              <option value="passport">Passport</option>
-                              <option value="driving_license">Driving License</option>
-                              <option value="voter_id">Voter ID</option>
-                            </select>
-                          </div>
                         </div>
-                      </CardContent>
-                    </Card>
-
-                    {/* Additional members */}
-                    <Card className="bg-stone-900 border-stone-800">
-                      <CardContent className="p-6">
-                        <div className="flex items-center justify-between mb-4">
-                          <h2 className="text-lg font-semibold text-stone-100">Additional Members</h2>
-                          <Button type="button" onClick={addMember} variant="outline"
-                            className="border-stone-700 text-stone-300 hover:border-amber-500 hover:text-amber-400 text-sm">
-                            <Plus className="w-3.5 h-3.5 mr-1" /> Add Member
-                          </Button>
-                        </div>
-
-                        {members.length === 0 ? (
-                          <p className="text-stone-600 text-sm">No additional members yet.</p>
-                        ) : (
-                          <div className="space-y-4">
-                            {members.map((m, i) => (
-                              <div key={i} className="bg-stone-800/60 rounded-lg p-4 border border-stone-800">
-                                <div className="flex items-center justify-between mb-3">
-                                  <span className="text-stone-400 text-sm font-medium">Member {i + 1}</span>
-                                  <button type="button" onClick={() => removeMember(i)}
-                                    className="text-stone-600 hover:text-red-400 transition-colors">
-                                    <Trash2 className="w-4 h-4" />
-                                  </button>
-                                </div>
-                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                                  <div className="space-y-1">
-                                    <Label className="text-stone-500 text-xs">Name *</Label>
-                                    <Input required value={m.memberName}
-                                      onChange={e => updateMember(i, 'memberName', e.target.value)}
-                                      placeholder="Full name"
-                                      className="bg-stone-800 border-stone-700 text-stone-100 focus:border-amber-500 text-sm" />
-                                  </div>
-                                  <div className="space-y-1">
-                                    <Label className="text-stone-500 text-xs">Age</Label>
-                                    <Input type="number" min={0} max={120} value={m.age}
-                                      onChange={e => updateMember(i, 'age', e.target.value)}
-                                      placeholder="Age"
-                                      className="bg-stone-800 border-stone-700 text-stone-100 focus:border-amber-500 text-sm" />
-                                  </div>
-                                  <div className="space-y-1">
-                                    <Label className="text-stone-500 text-xs">Relation</Label>
-                                    <Input value={m.relation}
-                                      onChange={e => updateMember(i, 'relation', e.target.value)}
-                                      placeholder="e.g. spouse"
-                                      className="bg-stone-800 border-stone-700 text-stone-100 focus:border-amber-500 text-sm" />
-                                  </div>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        )}
                       </CardContent>
                     </Card>
 
                     {/* Booking info badge */}
                     <div className="bg-stone-900/60 border border-stone-800 rounded-xl px-5 py-4 text-sm">
                       <div className="flex flex-wrap gap-x-6 gap-y-1 text-stone-400">
-                        <span>Rooms: <span className="text-stone-200 font-medium">{selectedRooms.map(r => r.roomNumber).join(', ')}</span></span>
-                        <span>Nights: <span className="text-stone-200 font-medium">{availability?.nights}</span></span>
-                        <span>Total: <span className="text-amber-400 font-bold">{formatRs(totalSelected)}</span></span>
-                        <span>Source: <span className="text-stone-200">{isAuthenticated ? 'Online' : 'Offline'}</span></span>
+                        <span>Rooms: <span className="text-stone-200 font-medium">{getRoomSummary(searchResult.assignedRooms)}</span></span>
+                        <span>Nights: <span className="text-stone-200 font-medium">{searchResult.nights}</span></span>
+                        <span>Total: <span className="text-amber-400 font-bold">{formatRs(searchResult.totalAmount || 0)}</span></span>
                       </div>
                     </div>
 
@@ -605,9 +546,9 @@ export default function ReservationPage() {
                       <Button type="submit" disabled={loading}
                         className="flex-1 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-semibold">
                         {loading ? (
-                          <><Loader2 className="w-4 h-4 animate-spin mr-2" /> Sending Request…</>
+                          <><Loader2 className="w-4 h-4 animate-spin mr-2" /> Submitting…</>
                         ) : (
-                          <>Send Block Request <ChevronRight className="w-4 h-4 ml-1" /></>
+                          <>Submit Booking <ChevronRight className="w-4 h-4 ml-1" /></>
                         )}
                       </Button>
                     </div>

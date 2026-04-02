@@ -22,21 +22,18 @@ import {
   Award,
   Shield,
   Bath,
-  Sparkles,
-  LogOut
+  Sparkles
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
-import ChatWidget from '@/components/ChatWidget'
+import ChatWidget  from '@/components/ChatWidget'
 import { Separator } from '@/components/ui/separator'
-import { useAuth } from '@/context/AuthContext'
 
 export default function MHomesResort() {
   const router = useRouter()
-  const { user, isAuthenticated, logout } = useAuth()
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [isChatOpen, setIsChatOpen] = useState(false)
   const [isPageLoading, setIsPageLoading] = useState(true)
@@ -52,7 +49,8 @@ export default function MHomesResort() {
   // Hero booking form state
   const [checkIn, setCheckIn] = useState<string | null>(null)
   const [checkOut, setCheckOut] = useState<string | null>(null)
-  const [guests, setGuests] = useState<number>(2)
+  const [roomType, setRoomType] = useState<'premium' | 'premium_plus'>('premium')
+  const [roomCount, setRoomCount] = useState<number>(1)
 
   const handleHeroSearch = () => {
     if (!checkIn || !checkOut) {
@@ -62,14 +60,10 @@ export default function MHomesResort() {
     const params = new URLSearchParams({
       checkIn: checkIn || '',
       checkOut: checkOut || '',
-      guests: guests.toString()
+      roomType: roomType,
+      roomCount: roomCount.toString()
     })
-    const reservationUrl = `/reservation?${params.toString()}&step=2`
-    if (!isAuthenticated) {
-      // Not logged in — send to login with redirect back to reservation + dates
-      router.push(`/login?redirect=${encodeURIComponent(reservationUrl)}`)
-      return
-    }
+    const reservationUrl = `/reservation?${params.toString()}`
     router.push(reservationUrl)
   }
 
@@ -527,50 +521,18 @@ export default function MHomesResort() {
               ))}
             </div>
 
-            {/* Auth buttons — desktop */}
+            {/* Book Now Button — desktop */}
             <motion.div
-              className="hidden lg:flex items-center gap-2"
+              className="hidden lg:flex items-center gap-4"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.3 }}
             >
-              {isAuthenticated ? (
-                <>
-                  <span className="text-xs text-muted-foreground mr-1">Welcome, {user?.name?.split(' ')[0]}</span>
-                  <Link href="/reservation">
-                    <Button variant="outline" size="sm" className="border-accent/30 text-foreground hover:border-accent/60 text-xs px-3">
-                      My Bookings
-                    </Button>
-                  </Link>
-                  {(user?.role === 'admin' || user?.role === 'reception') && (
-                    <Link href="/admin">
-                      <Button variant="outline" size="sm" className="border-purple-500/30 text-purple-400 hover:border-purple-500/60 text-xs px-3">
-                        <Shield className="w-3 h-3 mr-1" /> Admin
-                      </Button>
-                    </Link>
-                  )}
-                  <Button size="sm" variant="ghost"
-                    onClick={logout}
-                    className="text-muted-foreground hover:text-red-400 text-xs px-3">
-                    <LogOut className="w-3 h-3 mr-1" /> Logout
-                  </Button>
-                </>
-              ) : (
-                <>
-                  <Link href="/login">
-                    <Button variant="outline" size="sm"
-                      className="border-accent/30 text-foreground hover:border-accent/60 text-xs px-4">
-                      Sign In
-                    </Button>
-                  </Link>
-                  <Link href="/register">
-                    <Button size="sm"
-                      className="bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white font-semibold text-xs px-4 rounded-full shadow-md">
-                      Register
-                    </Button>
-                  </Link>
-                </>
-              )}
+              <Link href="#booking">
+                <Button className="bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white font-semibold text-sm px-6 rounded-full shadow-md">
+                  Book Now
+                </Button>
+              </Link>
             </motion.div>
 
             <motion.div
@@ -613,38 +575,13 @@ export default function MHomesResort() {
                   </Link>
                 </motion.div>
               ))}
-              {/* Mobile auth links */}
-              <div className="border-t border-accent/10 pt-3 space-y-2">
-                {isAuthenticated ? (
-                  <>
-                    <p className="text-xs text-muted-foreground px-3">Signed in as {user?.name}</p>
-                    <Link href="/reservation" onClick={() => setIsMenuOpen(false)}
-                      className="block luxury-text hover:text-accent transition-colors font-semibold py-2 px-3 rounded-lg hover:bg-accent/5">
-                      📅 My Bookings
-                    </Link>
-                    {(user?.role === 'admin' || user?.role === 'reception') && (
-                      <Link href="/admin" onClick={() => setIsMenuOpen(false)}
-                        className="block luxury-text hover:text-accent transition-colors font-semibold py-2 px-3 rounded-lg hover:bg-accent/5">
-                        🛡️ Admin Panel
-                      </Link>
-                    )}
-                    <button onClick={() => { logout(); setIsMenuOpen(false) }}
-                      className="block w-full text-left luxury-text text-red-400 hover:text-red-300 transition-colors font-semibold py-2 px-3 rounded-lg hover:bg-red-500/5">
-                      🚪 Logout
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <Link href="/login" onClick={() => setIsMenuOpen(false)}
-                      className="block luxury-text hover:text-accent transition-colors font-semibold py-2 px-3 rounded-lg hover:bg-accent/5">
-                      🔑 Sign In
-                    </Link>
-                    <Link href="/register" onClick={() => setIsMenuOpen(false)}
-                      className="block luxury-text hover:text-accent transition-colors font-semibold py-2 px-3 rounded-lg hover:bg-accent/5">
-                      ✨ Register
-                    </Link>
-                  </>
-                )}
+              {/* Mobile Book Now button */}
+              <div className="border-t border-accent/10 pt-3">
+                <Link href="#booking" onClick={() => setIsMenuOpen(false)} className="w-full">
+                  <Button className="w-full bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white font-semibold rounded-full">
+                    📅 Book Now
+                  </Button>
+                </Link>
               </div>
             </div>
           </motion.div>
@@ -848,17 +785,34 @@ export default function MHomesResort() {
                     className="flex flex-col"
                     whileHover={{ y: -2 }}
                   >
-                    <label className="text-xs font-semibold text-gray-700 mb-2">GUESTS</label>
+                    <label className="text-xs font-semibold text-gray-700 mb-2">ROOM TYPE</label>
                     <select 
                       className="rounded-lg px-3 sm:px-4 py-2 sm:py-3 bg-gray-50 text-gray-800 font-medium text-sm border border-gray-200 hover:border-gray-300 focus:border-orange-500 focus:ring-1 focus:ring-orange-500 focus:outline-none cursor-pointer transition-all"
-                      onChange={(e)=>setGuests(Number(e.target.value))} 
-                      value={guests}
+                      onChange={(e)=>setRoomType(e.target.value as 'premium' | 'premium_plus')} 
+                      value={roomType}
                     >
-                      <option value={1}>1 Guest</option>
-                      <option value={2}>2 Guests</option>
-                      <option value={3}>3 Guests</option>
-                      <option value={4}>4 Guests</option>
-                      <option value={5}>5+ Guests</option>
+                      <option value="premium">Premium </option>
+                      <option value="premium_plus">Premium Plus   </option>
+                    </select>
+                  </motion.div>
+
+                  {/* Room Count */}
+                  <motion.div 
+                    className="flex flex-col"
+                    whileHover={{ y: -2 }}
+                  >
+                    <label className="text-xs font-semibold text-gray-700 mb-2">ROOMS</label>
+                    <select 
+                      className="rounded-lg px-3 sm:px-4 py-2 sm:py-3 bg-gray-50 text-gray-800 font-medium text-sm border border-gray-200 hover:border-gray-300 focus:border-orange-500 focus:ring-1 focus:ring-orange-500 focus:outline-none cursor-pointer transition-all"
+                      onChange={(e)=>setRoomCount(Number(e.target.value))} 
+                      value={roomCount}
+                    >
+                      <option value={1}>1 Room</option>
+                      <option value={2}>2 Rooms</option>
+                      <option value={3}>3 Rooms</option>
+                      <option value={4}>4 Rooms</option>
+                      <option value={5}>5 Rooms</option>
+                      <option value={6}>6 Rooms</option>
                     </select>
                   </motion.div>
 
@@ -1207,21 +1161,12 @@ export default function MHomesResort() {
                           whileHover={{ scale: 1.02 }}
                           whileTap={{ scale: 0.98 }}
                         >
-                          {isAuthenticated ? (
-                            <Link href="/reservation" className="w-full">
-                              <Button size="lg" className="w-full bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white hover:shadow-xl px-12 py-4 text-lg rounded-xl font-semibold">
-                                Reserve Now
-                                <ArrowRight className="ml-2 w-5 h-5" />
-                              </Button>
-                            </Link>
-                          ) : (
-                            <Link href="/login?redirect=%2Freservation" className="w-full">
-                              <Button size="lg" className="w-full bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white hover:shadow-xl px-12 py-4 text-lg rounded-xl font-semibold">
-                                Reserve Now
-                                <ArrowRight className="ml-2 w-5 h-5" />
-                              </Button>
-                            </Link>
-                          )}
+                          <Link href="/reservation" className="w-full">
+                            <Button size="lg" className="w-full bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white hover:shadow-xl px-12 py-4 text-lg rounded-xl font-semibold">
+                              Book Now
+                              <ArrowRight className="ml-2 w-5 h-5" />
+                            </Button>
+                          </Link>
                         </motion.div>
                       <motion.div
                         whileHover={{ scale: 1.02 }}

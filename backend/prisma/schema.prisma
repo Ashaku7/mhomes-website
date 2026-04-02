@@ -31,6 +31,8 @@ enum BookingStatus {
   pending
   confirmed
   cancelled
+  checked_in
+  checked_out
 }
 
 enum BookingSource {
@@ -46,9 +48,9 @@ enum PaymentMethod {
 }
 
 enum PaymentStatus {
-  pending
-  completed
-  failed
+  yet_to_pay
+  paid
+  refunded
 }
 
 enum IdProofType {
@@ -58,25 +60,7 @@ enum IdProofType {
   voter_id
 }
 
-// ─── TABLE 1: Users ───────────────────────────────────────
-
-model User {
-  id           Int       @id @default(autoincrement())
-  name         String
-  email        String    @unique
-  phone        String?
-  passwordHash String    @map("password_hash")
-  role         Role      @default(guest)
-  createdAt    DateTime  @default(now()) @map("created_at")
-
-  bookings     Booking[]
-
-  @@index([email])
-  @@index([role])
-  @@map("users")
-}
-
-// ─── TABLE 2: Guests ──────────────────────────────────────
+// ─── TABLE 1: Guests ──────────────────────────────────────
 
 model Guest {
   id            Int          @id @default(autoincrement())
@@ -84,7 +68,7 @@ model Guest {
   phone         String
   email         String?
   address       String?
-  idProofType   IdProofType? @map("id_proof_type")   // stores: aadhaar / passport / etc.
+  idProofType   IdProofType? @map("id_proof_type")
   createdAt     DateTime     @default(now()) @map("created_at")
   members       GuestMember[]
   bookings      Booking[]
@@ -94,7 +78,7 @@ model Guest {
   @@map("guests")
 }
 
-// ─── TABLE 3: GuestMembers ────────────────────────────────
+// ─── TABLE 2: GuestMembers ────────────────────────────────
 
 model GuestMember {
   id         Int     @id @default(autoincrement())
@@ -109,7 +93,7 @@ model GuestMember {
   @@map("guest_members")
 }
 
-// ─── TABLE 4: Rooms ───────────────────────────────────────
+// ─── TABLE 3: Rooms ───────────────────────────────────────
 
 model Room {
   id            Int        @id @default(autoincrement())
@@ -128,34 +112,33 @@ model Room {
   @@map("rooms")
 }
 
-// ─── TABLE 5: Bookings ────────────────────────────────────
+// ─── TABLE 4: Bookings ────────────────────────────────────
 
 model Booking {
-  id            Int           @id @default(autoincrement())
-  guestId       Int           @map("guest_id")
-  userId        Int?          @map("user_id")
-  checkIn       DateTime      @map("check_in") @db.Date
-  checkOut      DateTime      @map("check_out") @db.Date
-  totalGuests   Int           @map("total_guests")
-  bookingStatus BookingStatus @default(pending) @map("booking_status")
-  bookingSource BookingSource @map("booking_source")
-  totalAmount   Decimal       @map("total_amount") @db.Decimal(10, 2)
-  notes         String?
-  createdAt     DateTime      @default(now()) @map("created_at")
+  id               Int           @id @default(autoincrement())
+  guestId          Int           @map("guest_id")
+  bookingReference String?       @unique @map("booking_reference")
+  checkIn          DateTime      @map("check_in") @db.Date
+  checkOut         DateTime      @map("check_out") @db.Date
+  totalGuests      Int           @map("total_guests")
+  bookingStatus    BookingStatus @default(pending) @map("booking_status")
+  bookingSource    BookingSource @map("booking_source")
+  totalAmount      Decimal       @map("total_amount") @db.Decimal(10, 2)
+  notes            String?
+  createdAt        DateTime      @default(now()) @map("created_at")
 
-  guest         Guest         @relation(fields: [guestId], references: [id])
-  user          User?         @relation(fields: [userId], references: [id])
-  bookingRooms  BookingRoom[]
-  payments      Payment[]
+  guest            Guest         @relation(fields: [guestId], references: [id])
+  bookingRooms     BookingRoom[]
+  payments         Payment[]
 
   @@index([guestId])
-  @@index([userId])
   @@index([checkIn, checkOut])
   @@index([bookingStatus])
+  @@index([bookingReference])
   @@map("bookings")
 }
 
-// ─── TABLE 6: BookingRooms ────────────────────────────────
+// ─── TABLE 5: BookingRooms ────────────────────────────────
 
 model BookingRoom {
   id        Int     @id @default(autoincrement())
@@ -171,14 +154,14 @@ model BookingRoom {
   @@map("booking_rooms")
 }
 
-// ─── TABLE 7: Payments ────────────────────────────────────
+// ─── TABLE 6: Payments ────────────────────────────────────
 
 model Payment {
   id            Int           @id @default(autoincrement())
   bookingId     Int           @map("booking_id")
   amount        Decimal       @db.Decimal(10, 2)
   paymentMethod PaymentMethod @map("payment_method")
-  paymentStatus PaymentStatus @default(pending) @map("payment_status")
+  paymentStatus PaymentStatus @default(yet_to_pay) @map("payment_status")
   transactionId String?       @map("transaction_id")
   paymentDate   DateTime?     @map("payment_date")
   createdAt     DateTime      @default(now()) @map("created_at")

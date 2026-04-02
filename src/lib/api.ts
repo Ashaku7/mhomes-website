@@ -131,13 +131,18 @@ export const roomsApi = {
     api.get('/api/rooms/available', {
       params: { checkIn, checkOut, guests },
     }),
+
+  searchRooms: (checkIn: string, checkOut: string, roomType: string, roomCount: number) =>
+    api.get('/api/rooms/search', {
+      params: { checkIn, checkOut, roomType, roomCount },
+    }),
 };
 
 // ─── BOOKINGS ────────────────────────────────────────────────────────────────
 
 export const bookingsApi = {
   createBooking: (data: CreateBookingData) =>
-    api.post('/api/bookings', data),
+    api.post('/api/bookings/online', data),
 
   confirmPayment: (
     bookingId: number,

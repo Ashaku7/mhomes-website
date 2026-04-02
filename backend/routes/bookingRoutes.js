@@ -2,31 +2,44 @@
 const express = require('express');
 const router = express.Router();
 const controller = require('../controllers/bookingController');
-const { protect, restrictTo } = require('../middlewares/auth');
 
-// PUBLIC — anyone can check availability
+// All routes are public - no auth required
+
+// DEBUG — view all rooms and bookings (temporary)
+router.get('/debug/database', controller.debugDatabase);
+
+// PUBLIC — search rooms (returns available, assignedRooms, totalAmount etc) — used by online booking
+router.get('/rooms/search', controller.searchRooms);
+
+// PUBLIC — search available rooms (simple list) — used by admin offline booking
+router.get('/rooms/search-simple', controller.searchRoomsSimple);
+
+// PUBLIC — get pending bookings
+router.get('/bookings/pending', controller.getPendingBookings);
+
+// PUBLIC — get all bookings with filters
+router.get('/bookings', controller.getBookings);
+
+// PUBLIC — check availability (legacy)
 router.get('/rooms/available', controller.getAvailableRooms);
 
-// PROTECTED — get bookings for logged-in user (must come before :id routes)
-router.get('/bookings/my',
-    protect,
-    controller.getMyBookings
-);
+// PUBLIC — create online booking
+router.post('/bookings/online', controller.createOnlineBooking);
 
-// PROTECTED — must be logged in to create a booking
-// reception and admin can create offline bookings
-// guests can create online bookings
-router.post('/bookings',
-    protect,
-    restrictTo('guest', 'admin', 'reception'),
-    controller.createBooking
-);
+// PUBLIC — create offline booking (new)
+router.post('/bookings/offline', controller.createOfflineBooking);
 
-// PROTECTED — admin and reception can confirm payment
-router.post('/bookings/:id/confirm-payment',
-    protect,
-    restrictTo('admin', 'reception'),
-    controller.confirmPayment
-);
+// PUBLIC — create booking
+router.post('/bookings', controller.createBooking);
+
+// PUBLIC — update booking status (new)
+router.patch('/bookings/:id/status', controller.updateBookingStatus);
+
+// PUBLIC — confirm payment
+router.post('/bookings/:id/confirm-payment', controller.confirmPayment);
+
+// PUBLIC — legacy endpoints (deprecated)
+router.post('/', controller.createBooking);
+router.post('/:id/confirm-payment', controller.confirmPayment);
 
 module.exports = router;
