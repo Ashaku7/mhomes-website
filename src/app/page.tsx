@@ -1,20 +1,23 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
 import type { KeyboardEvent } from 'react'
 import { motion, useScroll, useTransform, useMotionTemplate, useMotionValue } from 'framer-motion'
 import Image from 'next/image'
+import { DayPicker, DateRange } from 'react-day-picker'
+import 'react-day-picker/dist/style.css'
 import Link from 'next/link'
-import { 
-  Menu, 
-  X, 
-  Star, 
-  MapPin, 
-  Phone, 
-  Mail, 
-  Wifi, 
-  Car, 
+import {
+  Menu,
+  X,
+  Star,
+  MapPin,
+  Phone,
+  Mail,
+  Wifi,
+  Car,
   ChevronDown,
   Users,
   ArrowRight,
@@ -22,17 +25,552 @@ import {
   Award,
   Shield,
   Bath,
-  Sparkles
+  Sparkles,
+  Loader2
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
-import ChatWidget  from '@/components/ChatWidget'
+import ChatWidget from '@/components/ChatWidget'
 import { Separator } from '@/components/ui/separator'
 
-export default function MHomesResort() {
+// ═════════════════════════════════════════════════════════════════════════════
+// DATE RANGE PICKER COMPONENT
+// ═════════════════════════════════════════════════════════════════════════════
+
+const rdpStyles = `
+  .rdp-luxury {
+    --rdp-accent-color: #C9A84C;
+    --rdp-background-color: #FDF8EE;
+    margin: 0;
+    padding: 12px;
+  }
+  .rdp-luxury .rdp-day_selected {
+    background-color: #6B3F2A !important;
+    color: white !important;
+    border-radius: 4px;
+  }
+  .rdp-luxury .rdp-day_range_middle {
+    background-color: #FDF8EE !important;
+    color: #1A1A1A !important;
+    border-radius: 0 !important;
+  }
+  .rdp-luxury .rdp-day_range_start,
+  .rdp-luxury .rdp-day_range_end {
+    background-color: #6B3F2A !important;
+    color: white !important;
+    border-radius: 4px !important;
+  }
+  .rdp-luxury .rdp-day:hover:not([disabled]) {
+    background-color: #FDF8EE;
+    border-radius: 4px;
+  }
+  .rdp-luxury .rdp-caption_label {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 15px;
+    color: #6B3F2A;
+    font-weight: 400;
+  }
+  .rdp-luxury .rdp-nav_button:hover {
+    background-color: #FDF8EE;
+  }
+  .rdp-luxury .rdp-head_cell {
+    font-size: 11px;
+    font-weight: 500;
+    color: #999;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .rdp-luxury .rdp-day {
+    font-size: 13px;
+    border-radius: 4px;
+    transition: background 0.15s;
+  }
+`
+
+function formatDisplayDate(d: Date | undefined): string {
+  if (!d) return ''
+  return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).replace(/ /g, ' ')
+}
+
+function toISODate(d: Date | undefined): string {
+  if (!d) return ''
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const dd = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${dd}`
+}
+
+interface HeroDatePickerProps {
+  checkIn: string | null
+  checkOut: string | null
+  onChangeCheckIn: (v: string | null) => void
+  onChangeCheckOut: (v: string | null) => void
+  labelStyle?: React.CSSProperties
+  inputStyle?: React.CSSProperties
+}
+
+function HeroDateRangePicker({
+  checkIn,
+  checkOut,
+  onChangeCheckIn,
+  onChangeCheckOut,
+  labelStyle,
+  inputStyle
+}: HeroDatePickerProps) {
+  const [open, setOpen] = useState(false)
+  const [popoverPos, setPopoverPos] = useState({ top: 0, left: 0 })
+  const [mounted, setMounted] = useState(false)
+  const triggerRef = useRef<HTMLDivElement>(null)
+  const portalRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => { setMounted(true) }, [])
+
+  const range: DateRange | undefined =
+    checkIn || checkOut
+      ? {
+        from: checkIn ? new Date(checkIn + 'T00:00') : undefined,
+        to: checkOut ? new Date(checkOut + 'T00:00') : undefined
+      }
+      : undefined
+
+  const handleSelect = (r: DateRange | undefined) => {
+    onChangeCheckIn(r?.from ? toISODate(r.from) : null)
+    onChangeCheckOut(r?.to ? toISODate(r.to) : null)
+    if (r?.from && r?.to) setOpen(false)
+  }
+
+  const updatePopoverPos = () => {
+    if (!triggerRef.current) return
+    const rect = triggerRef.current.getBoundingClientRect()
+    const spacing = 8
+    const minEdgeGap = 8
+    const estimatedPopoverWidth = 320
+    const estimatedPopoverHeight = 360
+
+    let left = rect.left
+    if (left + estimatedPopoverWidth > window.innerWidth - minEdgeGap) {
+      left = window.innerWidth - estimatedPopoverWidth - minEdgeGap
+    }
+    left = Math.max(minEdgeGap, left)
+
+    const canOpenBelow = rect.bottom + spacing + estimatedPopoverHeight <= window.innerHeight - minEdgeGap
+    const top = canOpenBelow
+      ? rect.bottom + spacing
+      : Math.max(minEdgeGap, rect.top - estimatedPopoverHeight - spacing)
+
+    setPopoverPos({ top, left })
+  }
+
+  const handleOpen = () => {
+    updatePopoverPos()
+    setOpen(v => !v)
+  }
+
+  // Close on outside click (checks both trigger and portal)
+  useEffect(() => {
+    if (!open) return
+    const handler = (e: MouseEvent) => {
+      const t = e.target as Node
+      if (
+        triggerRef.current?.contains(t) ||
+        portalRef.current?.contains(t)
+      ) return
+      setOpen(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [open])
+
+  useEffect(() => {
+    if (!open) return
+    const onViewportChange = () => updatePopoverPos()
+    window.addEventListener('scroll', onViewportChange, { passive: true, capture: true })
+    window.addEventListener('resize', onViewportChange)
+    return () => {
+      window.removeEventListener('scroll', onViewportChange, true)
+      window.removeEventListener('resize', onViewportChange)
+    }
+  }, [open])
+
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+
+  const defaultLabelStyle: React.CSSProperties = {
+    fontFamily: 'var(--font-label)',
+    fontSize: '10px',
+    letterSpacing: '0.15em',
+    textTransform: 'uppercase',
+    color: 'rgba(255,255,255,0.7)',
+    marginBottom: '8px',
+    fontWeight: 500
+  }
+
+  const defaultInputStyle: React.CSSProperties = {
+    background: 'transparent',
+    color: 'white',
+    fontFamily: 'var(--font-body)',
+    borderBottom: '1px solid rgba(255,255,255,0.2)',
+    borderRadius: 0
+  }
+
+  const popover = (
+    <div
+      ref={portalRef}
+      style={{
+        position: 'fixed',
+        top: popoverPos.top,
+        left: popoverPos.left,
+        zIndex: 99999,
+        background: 'white',
+        border: '1px solid #E8E4DC',
+        borderRadius: '4px',
+        boxShadow: '0 8px 32px rgba(107,63,42,0.12)',
+      }}
+    >
+      <DayPicker
+        mode="range"
+        numberOfMonths={1}
+        selected={range}
+        onSelect={handleSelect}
+        disabled={{ before: today }}
+        className="rdp-luxury"
+      />
+    </div>
+  )
+
+  return (
+    <>
+      <style>{rdpStyles}</style>
+      <div ref={triggerRef} className="col-span-2 grid grid-cols-2 gap-3 sm:gap-4 md:gap-6">
+        {/* Check-in display */}
+        <div className="flex flex-col">
+          <label style={{ ...defaultLabelStyle, ...labelStyle }}>CHECK-IN</label>
+          <button
+            type="button"
+            onClick={handleOpen}
+            className="px-3 sm:px-4 py-2 sm:py-3 text-sm focus:outline-none transition-all text-left"
+            style={{ ...defaultInputStyle, ...inputStyle, cursor: 'pointer', minWidth: 0 }}
+          >
+            {checkIn
+              ? formatDisplayDate(new Date(checkIn + 'T00:00'))
+              : <span style={{ color: 'rgba(255,255,255,0.45)' }}>Select date</span>}
+          </button>
+        </div>
+
+        {/* Check-out display */}
+        <div className="flex flex-col">
+          <label style={{ ...defaultLabelStyle, ...labelStyle }}>CHECK-OUT</label>
+          <button
+            type="button"
+            onClick={handleOpen}
+            className="px-3 sm:px-4 py-2 sm:py-3 text-sm focus:outline-none transition-all text-left"
+            style={{ ...defaultInputStyle, ...inputStyle, cursor: 'pointer', minWidth: 0 }}
+          >
+            {checkOut
+              ? formatDisplayDate(new Date(checkOut + 'T00:00'))
+              : <span style={{ color: 'rgba(255,255,255,0.45)' }}>Select date</span>}
+          </button>
+        </div>
+      </div>
+      {open && mounted && createPortal(popover, document.body)}
+    </>
+  )
+}
+
+// Custom select for the hero bar — matches date picker style
+function HeroSelect({
+  label, value, onChange, options
+}: {
+  label: string
+  value: string | number
+  onChange: (v: string) => void
+  options: { value: string | number; label: string }[]
+}) {
+  const [open, setOpen] = useState(false)
+  const [popoverPos, setPopoverPos] = useState({ top: 0, left: 0, width: 0 })
+  const [mounted, setMounted] = useState(false)
+  const triggerRef = useRef<HTMLDivElement>(null)
+  const portalRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => { setMounted(true) }, [])
+
+  const handleOpen = () => {
+    if (triggerRef.current) {
+      const rect = triggerRef.current.getBoundingClientRect()
+      setPopoverPos({
+        top: rect.bottom + window.scrollY + 4,
+        left: rect.left + window.scrollX,
+        width: rect.width
+      })
+    }
+    setOpen(v => !v)
+  }
+
+  useEffect(() => {
+    if (!open) return
+    const handler = (e: MouseEvent) => {
+      const t = e.target as Node
+      if (triggerRef.current?.contains(t) || portalRef.current?.contains(t)) return
+      setOpen(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [open])
+
+  const selectedLabel = options.find(o => String(o.value) === String(value))?.label ?? String(value)
+
+  const labelStyle: React.CSSProperties = {
+    fontFamily: 'var(--font-label)',
+    fontSize: '10px',
+    letterSpacing: '0.15em',
+    textTransform: 'uppercase',
+    color: 'rgba(255,255,255,0.7)',
+    marginBottom: '8px',
+    fontWeight: 500,
+    display: 'block'
+  }
+
+  const portalContent = (
+    <div
+      ref={portalRef}
+      style={{
+        position: 'absolute',
+        top: popoverPos.top,
+        left: popoverPos.left,
+        minWidth: popoverPos.width,
+        zIndex: 99999,
+        background: 'white',
+        border: '1px solid #E8E4DC',
+        borderRadius: '4px',
+        boxShadow: '0 8px 32px rgba(107,63,42,0.12)',
+        overflow: 'hidden',
+      }}
+    >
+      {options.map(opt => (
+        <button
+          key={opt.value}
+          type="button"
+          onClick={() => { onChange(String(opt.value)); setOpen(false) }}
+          className="w-full text-left px-4 py-2.5 text-sm transition-colors"
+          style={{
+            fontFamily: 'var(--font-body)',
+            color: String(opt.value) === String(value) ? '#6B3F2A' : '#1A1A1A',
+            background: String(opt.value) === String(value) ? '#FDF8EE' : 'white',
+            fontWeight: String(opt.value) === String(value) ? 500 : 400,
+            borderBottom: '1px solid #F0ECE4',
+            cursor: 'pointer',
+            display: 'block',
+          }}
+          onMouseEnter={e => { if (String(opt.value) !== String(value)) (e.currentTarget as HTMLElement).style.background = '#FDF8EE' }}
+          onMouseLeave={e => { if (String(opt.value) !== String(value)) (e.currentTarget as HTMLElement).style.background = 'white' }}
+        >
+          {opt.label}
+        </button>
+      ))}
+    </div>
+  )
+
+  return (
+    <div className="flex flex-col" ref={triggerRef}>
+      <label style={labelStyle}>{label}</label>
+      <button
+        type="button"
+        onClick={handleOpen}
+        className="px-3 sm:px-4 py-2 sm:py-3 text-sm text-left focus:outline-none transition-all"
+        style={{
+          background: 'transparent',
+          color: 'white',
+          fontFamily: 'var(--font-body)',
+          borderBottom: '1px solid rgba(255,255,255,0.2)',
+          borderRadius: 0,
+          cursor: 'pointer',
+        }}
+      >
+        {selectedLabel}
+      </button>
+      {open && mounted && createPortal(portalContent, document.body)}
+    </div>
+  )
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// CONTACT FORM COMPONENT
+// ═════════════════════════════════════════════════════════════════════════════
+
+function ContactFormComponent() {
+  const [formData, setFormData] = useState({
+    firstName: '',
+    lastName: '',
+    email: '',
+    subject: '',
+    message: '',
+  })
+  const [loading, setLoading] = useState(false)
+  const [successMessage, setSuccessMessage] = useState<string | null>(null)
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target
+    setFormData(prev => ({ ...prev, [name]: value }))
+    setErrorMessage(null)
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setLoading(true)
+    setSuccessMessage(null)
+    setErrorMessage(null)
+
+    try {
+      const response = await fetch('http://localhost:5000/api/contact', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to send message. Please try again.')
+      }
+
+      setSuccessMessage(data.message || 'Your message has been sent successfully!')
+      setFormData({
+        firstName: '',
+        lastName: '',
+        email: '',
+        subject: '',
+        message: '',
+      })
+
+      // Clear success message after 5 seconds
+      setTimeout(() => setSuccessMessage(null), 5000)
+    } catch (error: any) {
+      setErrorMessage(error.message || 'Failed to send. Please try again.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <motion.div whileHover={{ y: -3 }}>
+          <label className="luxury-text text-sm font-semibold mb-3 block text-primary">First Name</label>
+          <Input
+            placeholder="John"
+            name="firstName"
+            value={formData.firstName}
+            onChange={handleInputChange}
+            disabled={loading}
+            required
+            className="rounded-lg border-2 border-primary/20 focus:border-primary/50 transition-all"
+          />
+        </motion.div>
+        <motion.div whileHover={{ y: -3 }}>
+          <label className="luxury-text text-sm font-semibold mb-3 block text-primary">Last Name</label>
+          <Input
+            placeholder="Doe"
+            name="lastName"
+            value={formData.lastName}
+            onChange={handleInputChange}
+            disabled={loading}
+            required
+            className="rounded-lg border-2 border-primary/20 focus:border-primary/50 transition-all"
+          />
+        </motion.div>
+      </div>
+      <motion.div whileHover={{ y: -3 }}>
+        <label className="luxury-text text-sm font-semibold mb-3 block text-primary">Email</label>
+        <Input
+          type="email"
+          placeholder="john@example.com"
+          name="email"
+          value={formData.email}
+          onChange={handleInputChange}
+          disabled={loading}
+          required
+          className="rounded-lg border-2 border-primary/20 focus:border-primary/50 transition-all"
+        />
+      </motion.div>
+      <motion.div whileHover={{ y: -3 }}>
+        <label className="luxury-text text-sm font-semibold mb-3 block text-primary">Subject</label>
+        <Input
+          placeholder="Inquiry about reservation"
+          name="subject"
+          value={formData.subject}
+          onChange={handleInputChange}
+          disabled={loading}
+          required
+          className="rounded-lg border-2 border-primary/20 focus:border-primary/50 transition-all"
+        />
+      </motion.div>
+      <motion.div whileHover={{ y: -3 }}>
+        <label className="luxury-text text-sm font-semibold mb-3 block text-primary">Message</label>
+        <Textarea
+          placeholder="Tell us about your dream vacation..."
+          name="message"
+          value={formData.message}
+          onChange={handleInputChange}
+          disabled={loading}
+          required
+          rows={4}
+          className="rounded-lg border-2 border-primary/20 focus:border-primary/50 transition-all"
+        />
+      </motion.div>
+
+      {successMessage && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-green-100 border border-green-300 text-green-800 px-4 py-3 rounded-lg text-sm"
+        >
+          ✓ {successMessage}
+        </motion.div>
+      )}
+
+      {errorMessage && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-red-100 border border-red-300 text-red-800 px-4 py-3 rounded-lg text-sm"
+        >
+          ✕ {errorMessage}
+        </motion.div>
+      )}
+
+      <motion.div
+        whileHover={{ scale: 1.05 }}
+        whileTap={{ scale: 0.95 }}
+      >
+        <Button
+          type="submit"
+          disabled={loading}
+          className="w-full bg-primary hover:bg-primary/90 text-primary-foreground py-3 text-lg font-bold rounded-lg hover:shadow-xl transition-all"
+        >
+          {loading ? (
+            <>
+              <Loader2 className="mr-2 w-5 h-5 animate-spin" />
+              Sending...
+            </>
+          ) : (
+            <>
+              Send Message
+              <ArrowRight className="ml-2 w-5 h-5" />
+            </>
+          )}
+        </Button>
+      </motion.div>
+    </form>
+  )
+}
+
+export default function Home() {
   const router = useRouter()
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [isChatOpen, setIsChatOpen] = useState(false)
@@ -41,7 +579,7 @@ export default function MHomesResort() {
   const [selectedAmenitiesRoom, setSelectedAmenitiesRoom] = useState<string | null>(null)
   const [carouselIndices, setCarouselIndices] = useState<{ [key: string]: number }>({})
   const [particles, setParticles] = useState<Array<{ id: number; x: number; y: number; duration: number; delay: number }>>([])
-  
+
   // Google reviews state
   const [topReviews, setTopReviews] = useState<Array<any>>([])
   const [reviewsLoading, setReviewsLoading] = useState(true)
@@ -105,8 +643,8 @@ export default function MHomesResort() {
         setTimeout(() => {
           try {
             v.muted = true
-            v.play().catch(() => {})
-          } catch (e) {}
+            v.play().catch(() => { })
+          } catch (e) { }
         }, 500)
       })
     }
@@ -126,7 +664,7 @@ export default function MHomesResort() {
         setReviewsLoading(true)
         const response = await fetch('/api/reviews')
         const data = await response.json()
-        
+
         // Get top 5 reviews sorted by rating (highest first) and then by date
         const top5 = (data.reviews || [])
           .sort((a: any, b: any) => {
@@ -136,7 +674,7 @@ export default function MHomesResort() {
             return new Date(b.date).getTime() - new Date(a.date).getTime()
           })
           .slice(0, 5)
-        
+
         setTopReviews(top5)
       } catch (error) {
         console.error('Error fetching reviews:', error)
@@ -170,14 +708,14 @@ export default function MHomesResort() {
   }, [])
 
   const getCarouselIndex = (roomName: string) => carouselIndices[roomName] || 0
-  
+
   const nextImage = (roomName: string, totalImages: number) => {
     setCarouselIndices(prev => ({
       ...prev,
       [roomName]: ((prev[roomName] || 0) + 1) % totalImages
     }))
   }
-  
+
   const prevImage = (roomName: string, totalImages: number) => {
     setCarouselIndices(prev => ({
       ...prev,
@@ -188,7 +726,7 @@ export default function MHomesResort() {
   const [shouldAnimateHome, setShouldAnimateHome] = useState(false)
   const { scrollYProgress } = useScroll()
   const y = useTransform(scrollYProgress, [0, 1], ['0%', '50%'])
-  
+
   // Magnetic cursor effect
   const mouseX = useMotionValue(0)
   const mouseY = useMotionValue(0)
@@ -226,19 +764,19 @@ export default function MHomesResort() {
       name: 'Premium Room',
       description: 'Sophisticated rooms with modern amenities and garden or pool views',
       image: "/premium.jpg",
-      images: ["/premium.jpg","/bathroom.jpg","/outside.jpg"],
-      price: '$450',
+      images: ["/premium.jpg", "/bathroom.jpg", "/outside.jpg"],
+      price: '₹5500/Night',
       bedType: 'Queen Bed',
       sqft: '45 sqm',
       maxGuests: '2',
       features: ['Pool View', 'Queen Bed', '45 sqm', 'Mini Bar']
     },
     {
-      name: 'Deluxe Studio',
+      name: 'Premium Plus Room',
       description: 'Comfortable studios perfect for couples seeking luxury and convenience',
       image: "/deluxe.jpg",
-      images: ["/deluxe.jpg","/bathroom.jpg","/outside.jpg"],
-      price: '$320',
+      images: ["/premium-plus.jpg", "/bathroom.jpg", "/outside.jpg"],
+      price: '₹6500/Night',
       bedType: 'Double Bed',
       sqft: '35 sqm',
       maxGuests: '2',
@@ -248,7 +786,7 @@ export default function MHomesResort() {
 
   const roomAmenities = {
     'Premium Room': ['42-inch Smart TV', 'Premium Bedding', 'Rainfall Shower', 'Air Conditioning', 'Mini Bar', 'Work Desk', 'High-Speed WiFi', 'Flat-screen TV', 'Bath Robes', 'Premium Toiletries', 'Nespresso Machine', 'Safe Deposit Box', 'Turn-down Service', 'Daily Housekeeping'],
-    'Deluxe Studio': ['32-inch Smart TV', 'Luxury Bedding', 'Modern Bathroom', 'Climate Control', 'Kitchenette', 'Dining Area', 'High-Speed WiFi', 'Seating Area', 'Premium Toiletries', 'Walk-in Shower', 'Free Coffee Maker', 'Digital Lock', 'Express Check-in', 'Daily Cleaning']
+    'Premium Plus Room': ['32-inch Smart TV', 'Luxury Bedding', 'Modern Bathroom', 'Climate Control', 'Kitchenette', 'Dining Area', 'High-Speed WiFi', 'Seating Area', 'Premium Toiletries', 'Walk-in Shower', 'Free Coffee Maker', 'Digital Lock', 'Express Check-in', 'Daily Cleaning']
   }
 
   const testimonials = [
@@ -302,7 +840,7 @@ export default function MHomesResort() {
     {
       word: 'Meena',
       description: 'Our visionary founder whose passion and dreams transformed an island into a sanctuary of luxury and wonder. Meena\'s dedication to excellence and unwavering commitment to guest happiness is woven into the very fabric of MHomes Resort. Her legacy is every smile, every memory, and every magical moment our guests experience.',
-      image: '/logo.png'
+      image: '/mhomes-logo.png'
     }
   ]
 
@@ -342,7 +880,7 @@ export default function MHomesResort() {
       {/* Loading Overlay - Minimal & Posh Design */}
       {isPageLoading && (
         <motion.div
-          className="fixed inset-0 z-[9999] bg-gradient-to-br from-amber-50 via-yellow-50 to-orange-50 flex items-center justify-center backdrop-blur-sm"
+          className="fixed inset-0 z-[9999] bg-gradient-to-br from-amber-50 via-amber-50 to-amber-50 flex items-center justify-center backdrop-blur-sm"
           initial={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.6, ease: "easeInOut" }}
@@ -351,12 +889,12 @@ export default function MHomesResort() {
           <div className="absolute inset-0 overflow-hidden">
             {/* Subtle gradient orbs */}
             <motion.div
-              className="absolute top-20 right-32 w-80 h-80 bg-gradient-to-br from-orange-300/8 to-transparent rounded-full blur-3xl"
+              className="absolute top-20 right-32 w-80 h-80 bg-gradient-to-br from-amber-200/8 to-transparent rounded-full blur-3xl"
               animate={{ y: [0, 30, 0], x: [0, 20, 0] }}
               transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
             />
             <motion.div
-              className="absolute bottom-20 left-32 w-80 h-80 bg-gradient-to-br from-blue-200/8 to-transparent rounded-full blur-3xl"
+              className="absolute bottom-20 left-32 w-80 h-80 bg-gradient-to-br from-amber-200/8 to-transparent rounded-full blur-3xl"
               animate={{ y: [0, -30, 0], x: [0, -20, 0] }}
               transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
             />
@@ -401,9 +939,9 @@ export default function MHomesResort() {
                 animate={{ opacity: [0.5, 1, 0.5] }}
                 transition={{ duration: 3, repeat: Infinity }}
               >
-                <div className="w-8 h-px bg-gradient-to-r from-transparent to-orange-500/40" />
-                <p className="text-orange-600/70 text-xs font-light tracking-widest uppercase">Loading</p>
-                <div className="w-8 h-px bg-gradient-to-l from-transparent to-orange-500/40" />
+                <div className="w-8 h-px bg-gradient-to-r from-transparent to-amber-600/40" />
+                <p className="text-amber-700/70 text-xs font-light tracking-widest uppercase">Loading</p>
+                <div className="w-8 h-px bg-gradient-to-l from-transparent to-amber-600/40" />
               </motion.div>
             </motion.div>
 
@@ -417,10 +955,10 @@ export default function MHomesResort() {
               {/* Single elegant progress bar */}
               <div className="space-y-3">
                 <div className="h-px bg-gradient-to-r from-transparent via-amber-300/30 to-transparent" />
-                
+
                 <div className="relative h-1 bg-amber-200/40 rounded-full overflow-hidden border border-amber-300/40">
                   <motion.div
-                    className="absolute inset-y-0 left-0 w-1/3 bg-gradient-to-r from-orange-400/0 via-orange-500 to-orange-400/0 rounded-full blur-sm"
+                    className="absolute inset-y-0 left-0 w-1/3 bg-gradient-to-r from-amber-400/0 via-amber-600 to-amber-400/0 rounded-full blur-sm"
                     animate={{
                       left: ['0%', '100%']
                     }}
@@ -448,12 +986,12 @@ export default function MHomesResort() {
 
           {/* Corner Accents - Minimal luxury touch */}
           <motion.div
-            className="absolute top-0 left-0 w-12 h-12 border-t border-l border-amber-400/20"
+            className="absolute top-0 left-0 w-12 h-12 border-t border-l border-amber-600/20"
             animate={{ opacity: [0.3, 0.8, 0.3] }}
             transition={{ duration: 3, repeat: Infinity }}
           />
           <motion.div
-            className="absolute bottom-0 right-0 w-12 h-12 border-b border-r border-amber-400/20"
+            className="absolute bottom-0 right-0 w-12 h-12 border-b border-r border-amber-600/20"
             animate={{ opacity: [0.3, 0.8, 0.3] }}
             transition={{ duration: 3, repeat: Infinity, delay: 1.5 }}
           />
@@ -461,37 +999,29 @@ export default function MHomesResort() {
       )}
 
       {/* Navigation */}
-      <motion.nav 
-        className="fixed top-0 left-0 right-0 z-50 glass-effect border-b border-accent/20"
+      <motion.nav
+        className="fixed top-0 left-0 right-0 z-50 glass-effect border-b border-border"
         initial={{ y: -100 }}
         animate={{ y: 0 }}
         transition={{ duration: 0.5, delay: isPageLoading ? 1.2 : 0 }}
       >
-        <div className="container mx-auto px-4 py-1.5">
+        <div className="container mx-auto px-4 py-1">
           <div className="flex items-center justify-between">
-            <motion.div
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-            >
-              <Link href="#home" className="flex items-center space-x-3 group">
-                <motion.div 
-                  className="flex items-center justify-center overflow-hidden transition-transform duration-300 group-hover:scale-110 -my-2"
-                  animate={shouldAnimateHome ? { rotate: [0, 360] } : {}}
-                  transition={shouldAnimateHome ? { duration: 0.6, ease: "easeInOut" } : {}}
-                  whileHover={{ rotate: 360 }}
-                >
+            <div>
+              <Link href="#home" className="flex items-center space-x-3">
+                <div className="flex items-center justify-center -my-6 relative top-2">
                   <Image
                     src="/mhomes-logo.png"
                     alt="MHomes Resort Logo"
-                    width={180}
-                    height={180}
+                    width={160}
+                    height={160}
                     priority
                     style={{ width: 'auto' }}
                     className="object-contain drop-shadow-lg"
                   />
-                </motion.div>
+                </div>
               </Link>
-            </motion.div>
+            </div>
 
             <div className="hidden lg:flex items-center space-x-1">
               {navigationItems.map((item, index) => (
@@ -504,33 +1034,32 @@ export default function MHomesResort() {
                   <Link
                     href={item.href}
                     onClick={() => handleNavigationClick(item.href)}
-                    className={`luxury-text px-4 py-2 rounded-lg transition-all duration-200 text-sm font-semibold ${
-                      activeSection === item.name.toLowerCase() 
-                        ? 'text-accent bg-accent/10 border border-accent/30' 
-                        : 'text-foreground hover:text-accent hover:bg-accent/5'
-                    }`}
+                    className={`group relative px-3 py-1.5 transition-colors duration-200 ${activeSection === item.name.toLowerCase()
+                      ? 'text-[#6B3F2A]'
+                      : 'text-[#1A1A1A] hover:text-[#6B3F2A]'
+                      }`}
+                    style={{ fontFamily: 'var(--font-label)', fontSize: '13px', fontWeight: 500, letterSpacing: '0.08em', textTransform: 'uppercase' as const }}
                   >
-                    <motion.span
-                      whileHover={{ scale: 1.1 }}
-                      className="inline-block"
-                    >
-                      {item.name}
-                    </motion.span>
+                    <span className="inline-block">{item.name}</span>
+                    <span className={`absolute bottom-0 left-0 w-full h-0.5 bg-[#6B3F2A] transition-transform duration-300 origin-left ${activeSection === item.name.toLowerCase()
+                      ? 'scale-x-100'
+                      : 'scale-x-0 group-hover:scale-x-100'
+                      }`} />
                   </Link>
                 </motion.div>
               ))}
             </div>
 
-            {/* Book Now Button — desktop */}
+            {/* Reserve now Button — desktop */}
             <motion.div
               className="hidden lg:flex items-center gap-4"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.3 }}
             >
-              <Link href="#booking">
-                <Button className="bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white font-semibold text-sm px-6 rounded-full shadow-md">
-                  Book Now
+              <Link href="reservation">
+                <Button className="bg-primary hover:bg-primary/90 text-primary-foreground px-5 py-1.5 shadow-md transition-colors duration-200" style={{ fontFamily: 'var(--font-label)', fontSize: '12px', fontWeight: 500, letterSpacing: '0.1em', textTransform: 'uppercase' as const, borderRadius: '2px' }}>
+                  Reserve now
                 </Button>
               </Link>
             </motion.div>
@@ -544,7 +1073,7 @@ export default function MHomesResort() {
                 variant="outline"
                 size="sm"
                 onClick={() => setIsMenuOpen(!isMenuOpen)}
-                className="border-accent/30 hover:border-accent/50"
+                className="border-primary/30 hover:border-primary/50"
               >
                 {isMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
               </Button>
@@ -555,7 +1084,7 @@ export default function MHomesResort() {
         {/* Mobile Menu */}
         {isMenuOpen && (
           <motion.div
-            className="lg:hidden glass-effect border-t border-accent/20"
+            className="lg:hidden glass-effect border-t border-border"
           >
             <div className="container mx-auto px-4 py-4 space-y-3">
               {navigationItems.map((item, index) => (
@@ -568,18 +1097,18 @@ export default function MHomesResort() {
                   <Link
                     href={item.href}
                     onClick={() => handleNavigationClick(item.href)}
-                    className="block luxury-text hover:text-accent transition-colors font-semibold py-2 px-3 rounded-lg hover:bg-accent/5"
+                    className="block luxury-text hover:text-primary transition-colors font-semibold py-2 px-3 rounded-lg hover:bg-primary/5"
                   >
                     <span className="mr-2 text-lg">{item.icon}</span>
                     {item.name}
                   </Link>
                 </motion.div>
               ))}
-              {/* Mobile Book Now button */}
-              <div className="border-t border-accent/10 pt-3">
+              {/* Mobile Reserve now button */}
+              <div className="border-t border-primary/10 pt-3">
                 <Link href="#booking" onClick={() => setIsMenuOpen(false)} className="w-full">
-                  <Button className="w-full bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white font-semibold rounded-full">
-                    📅 Book Now
+                  <Button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold rounded-full transition-colors duration-200">
+                    📅 Reserve now
                   </Button>
                 </Link>
               </div>
@@ -589,20 +1118,20 @@ export default function MHomesResort() {
       </motion.nav>
 
       {/* Hero Section with video background, persistent logo/title and booking form */}
-      <section id="home" className="relative h-screen overflow-hidden bg-gradient-to-br from-black via-primary/10 to-background">
+      <section id="home" className="relative h-screen overflow-hidden bg-gradient-to-br from-black via-primary/15 to-background">
         {/* Animated gradient background */}
         <div className="absolute inset-0 opacity-40">
-          <motion.div 
+          <motion.div
             className="absolute top-0 -left-4 w-96 h-96 bg-accent blur-[100px] rounded-full"
-            animate={{ 
+            animate={{
               x: [0, 50, -30, 0],
               y: [0, -50, 30, 0]
             }}
             transition={{ duration: 20, repeat: Infinity }}
           />
-          <motion.div 
+          <motion.div
             className="absolute bottom-0 right-0 w-96 h-96 bg-primary/30 blur-[100px] rounded-full"
-            animate={{ 
+            animate={{
               x: [0, -50, 30, 0],
               y: [0, 50, -30, 0]
             }}
@@ -650,61 +1179,50 @@ export default function MHomesResort() {
           <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-black/5 to-black/70 pointer-events-none" />
         </div>
 
-          {/* Play overlay (visible when autoplay fails or video is paused) */}
-          {heroAutoplayFailed && (
-            <div className="absolute inset-0 z-10 flex items-center justify-center pointer-events-auto">
-              <button
-                onClick={async () => {
-                  const v = heroVideoRef.current
-                  if (!v) return
-                  try {
-                    v.muted = true
-                    await v.play()
-                    setHeroAutoplayFailed(false)
-                    setHeroIsPlaying(true)
-                  } catch (err) {
-                    console.warn('Manual play failed', err)
-                    setHeroError(String(err || 'play failed'))
-                  }
-                }}
-                className="bg-white/20 hover:bg-white/30 text-white rounded-full p-4 backdrop-blur-md shadow-lg"
-                aria-label="Play background video"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-10 h-10 text-white">
-                  <path d="M5 3v18l15-9L5 3z" />
-                </svg>
-              </button>
-            </div>
-          )}
+        {/* Play overlay (visible when autoplay fails or video is paused) */}
+        {heroAutoplayFailed && (
+          <div className="absolute inset-0 z-10 flex items-center justify-center pointer-events-auto">
+            <button
+              onClick={async () => {
+                const v = heroVideoRef.current
+                if (!v) return
+                try {
+                  v.muted = true
+                  await v.play()
+                  setHeroAutoplayFailed(false)
+                  setHeroIsPlaying(true)
+                } catch (err) {
+                  console.warn('Manual play failed', err)
+                  setHeroError(String(err || 'play failed'))
+                }
+              }}
+              className="bg-white/20 hover:bg-white/30 text-white rounded-full p-4 backdrop-blur-md shadow-lg"
+              aria-label="Play background video"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-10 h-10 text-white">
+                <path d="M5 3v18l15-9L5 3z" />
+              </svg>
+            </button>
+          </div>
+        )}
 
-          {/* If there is a video error, show a small hint with retry */}
-          {heroError && (
-            <div className="absolute bottom-6 right-6 z-30">
-              <div className="bg-white/10 glass-effect text-white px-4 py-2 rounded-lg">
-                <div className="text-sm">{heroError}</div>
-                <div className="mt-2 flex gap-2">
-                  <Button size="sm" onClick={() => {
-                    setHeroError(null)
-                    setHeroAutoplayFailed(false)
-                    const v = heroVideoRef.current
-                    if (v) { v.load(); v.muted = true; v.play().catch(()=>{}) }
-                  }}>Retry</Button>
-                </div>
+        {/* If there is a video error, show a small hint with retry */}
+        {heroError && (
+          <div className="absolute bottom-6 right-6 z-30">
+            <div className="bg-white/10 glass-effect text-white px-4 py-2 rounded-lg">
+              <div className="text-sm">{heroError}</div>
+              <div className="mt-2 flex gap-2">
+                <Button size="sm" onClick={() => {
+                  setHeroError(null)
+                  setHeroAutoplayFailed(false)
+                  const v = heroVideoRef.current
+                  if (v) { v.load(); v.muted = true; v.play().catch(() => { }) }
+                }}>Retry</Button>
               </div>
             </div>
-          )}
-        
-
-        {/* Persistent header overlay inside hero (logo + name) */}
-        <div className="absolute top-6 left-0 right-0 z-20 flex items-center justify-center pointer-events-none">
-            <div className="flex items-center gap-4 bg-white/10 glass-effect rounded-full px-4 py-2 backdrop-blur-sm pointer-events-auto">
-            <Image src="/mhomes-logo.png" alt="MHomes" width={64} height={64} style={{ width: 'auto' }} className="object-contain" />
-            <div className="text-white text-center">
-              <div className="luxury-heading text-2xl md:text-3xl mhomes-brown">mhomes</div>
-              <div className="luxury-text text-sm text-white/90 -mt-1">An Immortal Paradise by the Sea</div>
-            </div>
           </div>
-        </div>
+        )}
+
 
         {/* Main hero content (centered) */}
         <div className="relative z-10 h-full flex flex-col justify-center items-center text-center text-white px-4">
@@ -714,125 +1232,118 @@ export default function MHomesResort() {
             transition={{ duration: 1 }}
             className="max-w-4xl mx-auto"
           >
-            {/* Floating accent line */}
-            <motion.div
-              className="flex justify-center mb-8"
-              animate={{ y: [0, -10, 0] }}
-              transition={{ duration: 3, repeat: Infinity }}
-            >
-              <div className="h-1 w-16 bg-gradient-to-r from-transparent via-accent to-transparent rounded-full" />
-            </motion.div>
-
             <motion.h1
-              className="luxury-heading text-7xl md:text-8xl lg:text-9xl mb-4 tracking-wider font-light hero-text-shadow mhomes-brown bg-clip-text text-transparent bg-gradient-to-r from-white via-accent/80 to-white"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2, duration: 0.8 }}
+              style={{
+                fontFamily: 'var(--font-heading)',
+                fontSize: 'clamp(48px, 7vw, 96px)',
+                fontWeight: 400,
+                color: '#FFFFFF',
+                letterSpacing: '-0.02em',
+                lineHeight: 1.1,
+                textAlign: 'center' as const,
+                marginBottom: '16px'
+              }}
             >
-              mhomes
+              A Sanctuary of <em style={{ fontStyle: 'italic', color: '#C9A84C' }}>Luxury</em>
             </motion.h1>
 
-            <motion.p className="luxury-text text-lg md:text-2xl text-white/90 max-w-2xl mx-auto leading-relaxed hero-text-shadow mb-8" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }}>
-              Experience <span className="text-accent font-semibold">luxury redefined</span> at MHomes Resort, where every moment becomes a <span className="text-accent font-semibold">treasured memory</span> in our tropical paradise
+            <motion.p
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.4 }}
+              style={{
+                fontFamily: 'var(--font-body)',
+                fontSize: 'clamp(16px, 2vw, 20px)',
+                fontWeight: 300,
+                color: 'rgba(255,255,255,0.85)',
+                letterSpacing: '0.02em',
+                textAlign: 'center' as const,
+                maxWidth: '560px',
+                margin: '0 auto 40px',
+                lineHeight: 1.7
+              }}
+            >
+              Experience unparalleled luxury at MHomes Resort, where every moment is crafted to perfection.
             </motion.p>
 
             {/* Booking form - SIMPLE & POSH VERSION */}
-            <motion.div 
+            <motion.div
               className="mt-12"
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.6, type: "spring" }}
             >
-              <motion.div 
-                className="rounded-2xl p-6 sm:p-8 bg-white/95 backdrop-blur-sm shadow-2xl border border-white/50 hover:shadow-3xl transition-all duration-300"
-                whileHover={{ borderColor: "rgba(251, 146, 60, 0.5)" }}
+              <div
+                style={{
+                  background: 'rgba(255,255,255,0.12)',
+                  backdropFilter: 'blur(12px)',
+                  border: '1px solid rgba(255,255,255,0.25)',
+                  borderRadius: '4px',
+                  padding: '20px 28px'
+                }}
               >
                 <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4 md:gap-6 items-end">
-                  {/* Check-in */}
-                  <motion.div 
-                    className="flex flex-col"
-                    whileHover={{ y: -2 }}
-                  >
-                    <label className="text-xs font-semibold text-gray-700 mb-2">CHECK-IN</label>
-                    <input 
-                      type="date" 
-                      name="checkin" 
-                      id="checkin" 
-                      className="rounded-lg px-3 sm:px-4 py-2 sm:py-3 bg-gray-50 text-gray-800 font-medium text-sm border border-gray-200 hover:border-gray-300 focus:border-orange-500 focus:ring-1 focus:ring-orange-500 focus:outline-none transition-all"
-                      onChange={(e)=>setCheckIn(e.target.value)} 
-                      value={checkIn || ''} 
-                    />
-                  </motion.div>
+                  {/* Check-in / Check-out — unified date range picker */}
+                  <HeroDateRangePicker
+                    checkIn={checkIn}
+                    checkOut={checkOut}
+                    onChangeCheckIn={setCheckIn}
+                    onChangeCheckOut={setCheckOut}
+                  />
 
-                  {/* Check-out */}
-                  <motion.div 
-                    className="flex flex-col"
-                    whileHover={{ y: -2 }}
-                  >
-                    <label className="text-xs font-semibold text-gray-700 mb-2">CHECK-OUT</label>
-                    <input 
-                      type="date" 
-                      name="checkout" 
-                      id="checkout" 
-                      className="rounded-lg px-3 sm:px-4 py-2 sm:py-3 bg-gray-50 text-gray-800 font-medium text-sm border border-gray-200 hover:border-gray-300 focus:border-orange-500 focus:ring-1 focus:ring-orange-500 focus:outline-none transition-all"
-                      onChange={(e)=>setCheckOut(e.target.value)} 
-                      value={checkOut || ''} 
-                    />
-                  </motion.div>
-
-                  {/* Guests */}
-                  <motion.div 
-                    className="flex flex-col"
-                    whileHover={{ y: -2 }}
-                  >
-                    <label className="text-xs font-semibold text-gray-700 mb-2">ROOM TYPE</label>
-                    <select 
-                      className="rounded-lg px-3 sm:px-4 py-2 sm:py-3 bg-gray-50 text-gray-800 font-medium text-sm border border-gray-200 hover:border-gray-300 focus:border-orange-500 focus:ring-1 focus:ring-orange-500 focus:outline-none cursor-pointer transition-all"
-                      onChange={(e)=>setRoomType(e.target.value as 'premium' | 'premium_plus')} 
-                      value={roomType}
-                    >
-                      <option value="premium">Premium </option>
-                      <option value="premium_plus">Premium Plus   </option>
-                    </select>
-                  </motion.div>
+                  {/* Room Type */}
+                  <HeroSelect
+                    label="ROOM TYPE"
+                    value={roomType}
+                    onChange={(v) => setRoomType(v as 'premium' | 'premium_plus')}
+                    options={[
+                      { value: 'premium', label: 'Premium' },
+                      { value: 'premium_plus', label: 'Premium Plus' },
+                    ]}
+                  />
 
                   {/* Room Count */}
-                  <motion.div 
-                    className="flex flex-col"
-                    whileHover={{ y: -2 }}
-                  >
-                    <label className="text-xs font-semibold text-gray-700 mb-2">ROOMS</label>
-                    <select 
-                      className="rounded-lg px-3 sm:px-4 py-2 sm:py-3 bg-gray-50 text-gray-800 font-medium text-sm border border-gray-200 hover:border-gray-300 focus:border-orange-500 focus:ring-1 focus:ring-orange-500 focus:outline-none cursor-pointer transition-all"
-                      onChange={(e)=>setRoomCount(Number(e.target.value))} 
-                      value={roomCount}
-                    >
-                      <option value={1}>1 Room</option>
-                      <option value={2}>2 Rooms</option>
-                      <option value={3}>3 Rooms</option>
-                      <option value={4}>4 Rooms</option>
-                      <option value={5}>5 Rooms</option>
-                      <option value={6}>6 Rooms</option>
-                    </select>
-                  </motion.div>
+                  <HeroSelect
+                    label="ROOMS"
+                    value={roomCount}
+                    onChange={(v) => setRoomCount(Number(v))}
+                    options={[
+                      { value: 1, label: '1 Room' },
+                      { value: 2, label: '2 Rooms' },
+                      { value: 3, label: '3 Rooms' },
+                      { value: 4, label: '4 Rooms' },
+                      { value: 5, label: '5 Rooms' },
+                      { value: 6, label: '6 Rooms' },
+                    ]}
+                  />
 
                   {/* Search Button */}
-                  <motion.div
-                    className="col-span-3 sm:col-span-1"
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                  >
-                    <Button 
-                      size="lg" 
-                      className="w-full bg-orange-500 hover:bg-orange-600 text-white px-4 sm:px-6 py-2 sm:py-3 rounded-lg font-semibold shadow-lg hover:shadow-xl transition-all text-sm sm:text-base"
+                  <div className="col-span-3 sm:col-span-1">
+                    <button
+                      className="w-full transition-all hover:opacity-90"
+                      style={{
+                        background: '#6B3F2A',
+                        color: 'white',
+                        fontFamily: 'var(--font-label)',
+                        letterSpacing: '0.1em',
+                        textTransform: 'uppercase',
+                        fontSize: '13px',
+                        borderRadius: '2px',
+                        padding: '14px 32px',
+                        border: 'none',
+                        cursor: 'pointer',
+                        fontWeight: 500
+                      }}
                       onClick={() => handleHeroSearch()}
                     >
                       Search
-                      <ArrowRight className="ml-1 sm:ml-2 w-3 sm:w-4 h-3 sm:h-4" />
-                    </Button>
-                  </motion.div>
+                    </button>
+                  </div>
                 </div>
-              </motion.div>
+              </div>
             </motion.div>
 
             {/* Scroll indicator */}
@@ -842,7 +1353,7 @@ export default function MHomesResort() {
               transition={{ duration: 2, repeat: Infinity }}
             >
               <div className="flex flex-col items-center gap-2">
-                <span className="text-white/60 text-sm">Scroll to explore</span>
+                <span style={{ fontFamily: 'var(--font-label)', fontSize: '10px', letterSpacing: '0.2em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.6)' }}>Scroll to explore</span>
                 <ChevronDown className="w-6 h-6 text-accent" />
               </div>
             </motion.div>
@@ -854,7 +1365,7 @@ export default function MHomesResort() {
       <section className="py-20 bg-background relative overflow-hidden">
         {/* Animated background elements */}
         <div className="absolute inset-0 opacity-30">
-          <motion.div 
+          <motion.div
             className="absolute top-20 left-10 w-72 h-72 bg-accent blur-[80px] rounded-full"
             animate={{ y: [0, 40, 0] }}
             transition={{ duration: 15, repeat: Infinity }}
@@ -880,12 +1391,12 @@ export default function MHomesResort() {
               </Badge>
             </motion.div>
 
-            <h2 className="luxury-heading text-4xl md:text-6xl mb-6 bg-clip-text text-transparent bg-gradient-to-r from-primary via-accent to-primary">
+            <h2 className="luxury-heading mb-6" style={{ fontSize: 'clamp(32px, 4vw, 56px)', fontWeight: 400, letterSpacing: '-0.02em', color: '#1A1A1A' }}>
               Luxury Redefined
             </h2>
-            <p className="luxury-text text-xl text-muted-foreground leading-relaxed">
-              Nestled in pristine waters, MHomes Resort offers an <span className="text-accent font-semibold">unparalleled luxury experience</span>. 
-              From overwater villas to world-class amenities, every detail is crafted to <span className="text-accent font-semibold">perfection</span>.
+            <p className="luxury-text text-muted-foreground" style={{ fontWeight: 300, fontSize: '16px', color: '#4A4A4A', lineHeight: 1.8, maxWidth: '600px', margin: '0 auto' }}>
+              Nestled in pristine waters, MHomes Resort offers an unparalleled luxury experience.
+              From overwater villas to world-class amenities, every detail is crafted to perfection.
             </p>
           </motion.div>
 
@@ -895,7 +1406,7 @@ export default function MHomesResort() {
                 key={amenity.name}
                 initial={{ opacity: 0, y: 30 }}
                 whileInView={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.1  }}
+                transition={{ delay: index * 0.1 }}
                 whileHover={{ y: -8 }}
                 className="text-center group cursor-pointer"
               >
@@ -913,7 +1424,7 @@ export default function MHomesResort() {
       {/* Story Section */}
       <section id="story" className="py-20 bg-gradient-to-b from-muted/30 via-background to-muted/50 relative overflow-hidden">
         {/* Decorative elements */}
-        <div className="absolute top-0 right-0 w-96 h-96 bg-accent/5 rounded-full blur-3xl -mr-48 -mt-48" />
+        <div className="absolute top-0 right-0 w-96 h-96 bg-secondary/5 rounded-full blur-3xl -mr-48 -mt-48" />
         <div className="absolute bottom-0 left-0 w-96 h-96 bg-primary/5 rounded-full blur-3xl -ml-48 -mb-48" />
 
         <div className="container mx-auto px-4 relative z-10">
@@ -923,11 +1434,11 @@ export default function MHomesResort() {
             transition={{ duration: 0.8 }}
             className="text-center max-w-4xl mx-auto mb-20"
           >
-            <h2 className="luxury-heading text-4xl md:text-6xl mb-6 bg-clip-text text-transparent bg-gradient-to-r from-primary via-accent to-primary">
-              What does the <span className="text-accent">M</span> stand for?
+            <h2 className="luxury-heading mb-6" style={{ fontSize: 'clamp(32px, 4vw, 56px)', fontWeight: 400, letterSpacing: '-0.02em', color: '#1A1A1A' }}>
+              What does the M stand for?
             </h2>
-            <p className="luxury-text text-xl text-muted-foreground">
-              Discover the profound meaning behind MHomes — a fusion of <span className="text-accent font-semibold">culture, mythology, nature, and visionary dreams</span>.
+            <p className="luxury-text text-muted-foreground" style={{ fontWeight: 300, fontSize: '16px', color: '#4A4A4A', lineHeight: 1.8, maxWidth: '600px', margin: '0 auto' }}>
+              Discover the profound meaning behind MHomes — a fusion of culture, mythology, nature, and visionary dreams.
             </p>
           </motion.div>
 
@@ -938,18 +1449,16 @@ export default function MHomesResort() {
                 initial={{ opacity: 0, y: 30 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.8, delay: 0.2 }}
-                className={`grid grid-cols-1 md:grid-cols-2 gap-12 items-center ${
-                  index % 2 === 1 ? 'md:grid-flow-dense' : ''
-                }`}
+                className={`grid grid-cols-1 md:grid-cols-2 gap-12 items-center ${index % 2 === 1 ? 'md:grid-flow-dense' : ''
+                  }`}
               >
                 {/* Image with enhanced effects */}
                 <motion.div
                   initial={{ opacity: 0, scale: 0.9 }}
                   whileInView={{ opacity: 1, scale: 1 }}
                   transition={{ duration: 0.8, delay: 0.1 }}
-                  className={`relative h-96 rounded-3xl overflow-hidden shadow-2xl group ${
-                    index % 2 === 1 ? 'md:col-start-2 md:row-start-1' : ''
-                  }`}
+                  className={`relative h-96 rounded-3xl overflow-hidden shadow-2xl group ${index % 2 === 1 ? 'md:col-start-2 md:row-start-1' : ''
+                    }`}
                 >
                   <Image
                     src={story.image}
@@ -959,14 +1468,14 @@ export default function MHomesResort() {
                     className="object-cover group-hover:scale-110 transition-transform duration-500"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-black/20 group-hover:from-accent/30 group-hover:via-transparent group-hover:to-accent/20 transition-all duration-500" />
-                  
+
                   {/* Floating badge */}
-                  <motion.div 
+                  <motion.div
                     className="absolute top-6 right-6"
                     animate={{ y: [0, -8, 0] }}
                     transition={{ duration: 3, repeat: Infinity }}
                   >
-                    <Badge className="bg-accent text-white shadow-lg">{index + 1} of 4</Badge>
+                    <Badge className="bg-secondary text-white shadow-lg">{index + 1} of 4</Badge>
                   </motion.div>
                 </motion.div>
 
@@ -977,29 +1486,18 @@ export default function MHomesResort() {
                   transition={{ duration: 0.8, delay: 0.2 }}
                   className={index % 2 === 1 ? 'md:col-start-1 md:row-start-1' : ''}
                 >
-                  <motion.h3 
-                    className="luxury-heading text-5xl md:text-6xl mb-6 text-primary"
-                    whileHover={{ scale: 1.05 }}
-                    transition={{ type: "spring", stiffness: 400, damping: 10 }}
+                  <h3
+                    className="luxury-heading mb-6"
+                    style={{ fontSize: 'clamp(28px, 3vw, 42px)', fontWeight: 500, color: '#1A1A1A', letterSpacing: '-0.02em' }}
                   >
-                    {story.word.split('').map((char, i) => (
-                      <motion.span
-                        key={i}
-                        initial={{ opacity: 0, y: 20 }}
-                        whileInView={{ opacity: 1, y: 0 }}
-                        transition={{ delay: i * 0.05 }}
-                        className={char === story.word[0] ? 'text-transparent bg-clip-text bg-gradient-to-r from-accent to-accent/60 text-6xl md:text-7xl' : ''}
-                      >
-                        {char}
-                      </motion.span>
-                    ))}
-                  </motion.h3>
-                  <p className="luxury-text text-lg text-muted-foreground leading-relaxed mb-8">
+                    {story.word}
+                  </h3>
+                  <p className="luxury-text mb-8" style={{ fontWeight: 300, color: '#4A4A4A', fontSize: '16px', lineHeight: 1.8 }}>
                     {story.description}
                   </p>
-                  <motion.div className="flex items-center gap-3 text-accent" whileHover={{ x: 10 }}>
-                    <motion.div className="h-1 w-12 bg-gradient-to-r from-accent to-transparent rounded-full" />
-                    <span className="luxury-heading text-sm font-semibold">A pillar of MHomes</span>
+                  <motion.div className="flex items-center gap-3" whileHover={{ x: 10 }}>
+                    <div className="h-0.5 w-12 bg-[#C9A84C]" />
+                    <span style={{ fontFamily: 'var(--font-label)', fontSize: '11px', letterSpacing: '0.2em', textTransform: 'uppercase', color: '#C9A84C' }}>A pillar of MHomes</span>
                   </motion.div>
                 </motion.div>
               </motion.div>
@@ -1012,8 +1510,8 @@ export default function MHomesResort() {
             transition={{ duration: 0.8, delay: 0.4 }}
             className="text-center mt-20 max-w-3xl mx-auto"
           >
-            <p className="luxury-text text-lg text-muted-foreground leading-relaxed">
-              These four pillars weave together the soul of <span className="text-accent font-semibold text-xl">MHomes Resort</span> — 
+            <p className="luxury-text" style={{ fontWeight: 300, color: '#4A4A4A', fontSize: '16px', lineHeight: 1.8, maxWidth: '600px', margin: '0 auto' }}>
+              These four pillars weave together the soul of <span style={{ color: '#C9A84C', fontWeight: 500 }}>MHomes Resort</span> —
               where ancient cultural heritage meets contemporary luxury, where nature flows freely, and where dreams transform into unforgettable realities.
             </p>
           </motion.div>
@@ -1024,7 +1522,7 @@ export default function MHomesResort() {
       <section id="accommodations" className="py-24 bg-gradient-to-b from-background via-muted/10 to-background relative overflow-hidden">
         {/* Animated background */}
         <div className="absolute inset-0 opacity-20">
-          <motion.div 
+          <motion.div
             className="absolute bottom-0 right-10 w-96 h-96 bg-accent blur-[120px] rounded-full"
             animate={{ y: [0, -60, 0], x: [0, 30, 0] }}
             transition={{ duration: 20, repeat: Infinity }}
@@ -1043,8 +1541,8 @@ export default function MHomesResort() {
                 Premium Rooms
               </Badge>
             </motion.div>
-            <h2 className="luxury-heading text-4xl md:text-6xl mb-6 bg-clip-text text-transparent bg-gradient-to-r from-primary via-accent to-primary">Exquisite Accommodations</h2>
-            <p className="luxury-text text-lg text-muted-foreground max-w-3xl mx-auto">
+            <h2 className="luxury-heading mb-6" style={{ fontSize: 'clamp(32px, 4vw, 56px)', fontWeight: 400, letterSpacing: '-0.02em', color: '#1A1A1A' }}>Exquisite Accommodations</h2>
+            <p className="luxury-text" style={{ fontWeight: 300, fontSize: '16px', color: '#4A4A4A', lineHeight: 1.8, maxWidth: '600px', margin: '0 auto' }}>
               Discover your perfect sanctuary with thoughtfully designed rooms tailored to your every need.
             </p>
           </motion.div>
@@ -1053,7 +1551,7 @@ export default function MHomesResort() {
             {accommodationTypes.map((room, idx) => {
               const currentImageIdx = getCarouselIndex(room.name)
               const currentImage = room.images[currentImageIdx]
-              
+
               return (
                 <motion.div
                   key={room.name}
@@ -1080,7 +1578,7 @@ export default function MHomesResort() {
                       <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-black/20 group-hover:from-accent/20 group-hover:via-transparent group-hover:to-accent/10 transition-all duration-500" />
 
                       {/* Price Badge */}
-                      <motion.div 
+                      <motion.div
                         className="absolute top-6 left-6"
                         whileHover={{ scale: 1.1, y: -5 }}
                       >
@@ -1122,18 +1620,19 @@ export default function MHomesResort() {
                   {/* Room Details with enhanced interactions */}
                   <motion.div className={idx % 2 === 1 ? 'lg:col-start-1 lg:row-start-1' : ''}>
                     <motion.div className="mb-8">
-                      <motion.h3 
-                        className="luxury-heading text-5xl md:text-6xl mb-6 bg-clip-text text-transparent bg-gradient-to-r from-primary to-accent"
+                      <motion.h3
+                        className="luxury-heading mb-6"
+                        style={{ fontSize: 'clamp(28px, 3vw, 42px)', fontWeight: 500, color: '#1A1A1A', letterSpacing: '-0.02em' }}
                         initial={{ opacity: 0, y: 10 }}
                         whileInView={{ opacity: 1, y: 0 }}
                       >
                         {room.name}
                       </motion.h3>
-                      <p className="luxury-text text-xl text-muted-foreground leading-relaxed">{room.description}</p>
+                      <p className="luxury-text" style={{ fontWeight: 300, fontSize: '16px', color: '#4A4A4A', lineHeight: 1.8 }}>{room.description}</p>
                     </motion.div>
 
                     {/* Room Specs with card effect */}
-                    <motion.div 
+                    <motion.div
                       className="grid grid-cols-3 gap-6 mb-12 p-8 bg-gradient-to-br from-accent/10 via-transparent to-accent/5 rounded-2xl border border-accent/20 hover:border-accent/50 transition-all duration-300 shadow-lg"
                       whileHover={{ boxShadow: "0 0 30px rgba(var(--accent), 0.2)" }}
                     >
@@ -1157,17 +1656,17 @@ export default function MHomesResort() {
                     {/* Buttons with enhanced interactions */}
                     <div className="flex flex-col sm:flex-row gap-4">
                       <motion.div
-                          className="flex-1"
-                          whileHover={{ scale: 1.02 }}
-                          whileTap={{ scale: 0.98 }}
-                        >
-                          <Link href="/reservation" className="w-full">
-                            <Button size="lg" className="w-full bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white hover:shadow-xl px-12 py-4 text-lg rounded-xl font-semibold">
-                              Book Now
-                              <ArrowRight className="ml-2 w-5 h-5" />
-                            </Button>
-                          </Link>
-                        </motion.div>
+                        className="flex-1"
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                      >
+                        <Link href="/reservation" className="w-full">
+                          <Button size="lg" className="w-full bg-primary hover:bg-primary/90 text-primary-foreground hover:shadow-xl px-12 py-4 text-lg rounded-xl font-semibold transition-all duration-200">
+                            Reserve now
+                            <ArrowRight className="ml-2 w-5 h-5" />
+                          </Button>
+                        </Link>
+                      </motion.div>
                       <motion.div
                         whileHover={{ scale: 1.02 }}
                         whileTap={{ scale: 0.98 }}
@@ -1192,7 +1691,7 @@ export default function MHomesResort() {
 
       {/* Amenities Modal */}
       {selectedAmenitiesRoom && (
-        <motion.div 
+        <motion.div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -1205,12 +1704,12 @@ export default function MHomesResort() {
             transition={{ type: "spring", stiffness: 300, damping: 30 }}
             className="bg-gradient-to-br from-white/98 to-white/95 rounded-3xl shadow-2xl max-w-3xl w-full max-h-[80vh] overflow-y-auto border-2 border-accent/20"
           >
-            <motion.div 
+            <motion.div
               className="sticky top-0 bg-gradient-to-r from-primary/10 via-accent/10 to-primary/10 p-8 border-b border-accent/20 flex items-center justify-between backdrop-blur-md"
               initial={{ y: -50 }}
               animate={{ y: 0 }}
             >
-              <motion.h2 
+              <motion.h2
                 className="luxury-heading text-4xl bg-clip-text text-transparent bg-gradient-to-r from-primary to-accent"
                 initial={{ x: -30 }}
                 animate={{ x: 0 }}
@@ -1239,7 +1738,7 @@ export default function MHomesResort() {
                     whileHover={{ x: 10, boxShadow: "0 10px 30px rgba(var(--accent), 0.2)" }}
                     className="flex items-center gap-4 p-5 bg-gradient-to-r from-accent/5 to-transparent rounded-xl border-2 border-accent/20 hover:border-accent/50 transition-all duration-300 group cursor-pointer"
                   >
-                    <motion.div 
+                    <motion.div
                       className="w-4 h-4 bg-gradient-to-br from-accent to-accent/60 rounded-full flex-shrink-0"
                       animate={{ scale: [1, 1.2, 1] }}
                       transition={{ duration: 2, repeat: Infinity, delay: i * 0.1 }}
@@ -1250,14 +1749,14 @@ export default function MHomesResort() {
               </div>
             </div>
 
-            <motion.div 
+            <motion.div
               className="sticky bottom-0 bg-gradient-to-t from-background to-background/80 p-8 flex justify-end gap-4 border-t-2 border-accent/20 backdrop-blur-md"
               initial={{ y: 50 }}
               animate={{ y: 0 }}
             >
               <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   onClick={() => setSelectedAmenitiesRoom(null)}
                   className="border-2 border-primary text-primary hover:bg-primary/5 px-8 py-3 text-lg font-semibold rounded-lg"
                 >
@@ -1265,8 +1764,8 @@ export default function MHomesResort() {
                 </Button>
               </motion.div>
               <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                <Button 
-                  className="bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white px-8 py-3 text-lg font-semibold rounded-lg hover:shadow-xl transition-all"
+                <Button
+                  className="bg-primary hover:bg-primary/90 text-primary-foreground px-8 py-3 text-lg font-semibold rounded-lg hover:shadow-xl transition-all"
                 >
                   Book This Room
                   <ArrowRight className="ml-2 w-5 h-5" />
@@ -1295,11 +1794,11 @@ export default function MHomesResort() {
                 Gallery Showcase
               </Badge>
             </motion.div>
-            <h2 className="luxury-heading text-4xl md:text-6xl mb-6 bg-clip-text text-transparent bg-gradient-to-r from-primary via-accent to-primary">
+            <h2 className="luxury-heading mb-6" style={{ fontSize: 'clamp(32px, 4vw, 56px)', fontWeight: 400, letterSpacing: '-0.02em', color: '#1A1A1A' }}>
               Picture Perfect Moments
             </h2>
-            <p className="luxury-text text-xl text-muted-foreground max-w-3xl mx-auto">
-              Explore the <span className="text-accent font-semibold">breathtaking beauty</span> of MHomes Resort through our curated gallery of stunning imagery.
+            <p className="luxury-text" style={{ fontWeight: 300, fontSize: '16px', color: '#4A4A4A', lineHeight: 1.8, maxWidth: '600px', margin: '0 auto' }}>
+              Explore the breathtaking beauty of MHomes Resort through our curated gallery of stunning imagery.
             </p>
           </motion.div>
 
@@ -1335,7 +1834,7 @@ export default function MHomesResort() {
             return (
               <div className="relative flex flex-col items-center justify-center min-h-[650px]">
                 {/* Large blurred background image with enhanced effect */}
-                <motion.div 
+                <motion.div
                   className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[90vw] h-[480px] md:w-[80vw] md:h-[600px] rounded-3xl overflow-hidden z-0"
                   layoutId="gallery-bg"
                   transition={{ duration: 0.5 }}
@@ -1360,7 +1859,7 @@ export default function MHomesResort() {
                     whileTap={{ scale: 0.9 }}
                     className="flex flex-col items-center justify-center w-16 h-96 group bg-transparent border-none focus:outline-none"
                   >
-                    <motion.span 
+                    <motion.span
                       className="w-12 h-12 flex items-center justify-center rounded-full border-2 border-primary/40 bg-white/40 group-hover:bg-accent/80 transition-colors shadow-lg hover:shadow-xl"
                       whileHover={{ scale: 1.15 }}
                     >
@@ -1371,7 +1870,7 @@ export default function MHomesResort() {
                   {/* Center card with enhanced effects */}
                   <motion.div className="w-full max-w-2xl mx-4" layoutId="gallery-card">
                     <div className="relative flex flex-col items-center justify-end h-[420px] md:h-[500px]">
-                      <motion.div 
+                      <motion.div
                         className="absolute left-1/2 top-0 -translate-x-1/2 w-[90%] h-[70%] rounded-3xl overflow-hidden shadow-2xl"
                         layoutId="gallery-image"
                         whileHover={{ scale: 1.02 }}
@@ -1385,13 +1884,13 @@ export default function MHomesResort() {
                         />
                         <div className="absolute inset-0 bg-black/20 group-hover:bg-black/10 transition-all duration-300" />
                       </motion.div>
-                      
-                      <motion.div 
+
+                      <motion.div
                         className="relative z-10 w-full bg-gradient-to-br from-white/98 to-white/95 backdrop-blur-sm rounded-3xl p-8 flex flex-col items-center justify-center shadow-2xl min-h-[160px] border border-accent/20"
                         layoutId="gallery-text"
                         whileHover={{ boxShadow: "0 20px 60px rgba(var(--accent), 0.3)" }}
                       >
-                        <motion.h3 
+                        <motion.h3
                           className="luxury-heading text-3xl md:text-4xl mb-3 text-center bg-clip-text text-transparent bg-gradient-to-r from-primary to-accent"
                           initial={{ opacity: 0 }}
                           animate={{ opacity: 1 }}
@@ -1399,7 +1898,7 @@ export default function MHomesResort() {
                         >
                           {slide.title}
                         </motion.h3>
-                        <motion.p 
+                        <motion.p
                           className="luxury-text text-base md:text-lg text-muted-foreground text-center mb-5"
                           initial={{ opacity: 0 }}
                           animate={{ opacity: 1 }}
@@ -1426,7 +1925,7 @@ export default function MHomesResort() {
                     whileTap={{ scale: 0.9 }}
                     className="flex flex-col items-center justify-center w-16 h-96 group bg-transparent border-none focus:outline-none"
                   >
-                    <motion.span 
+                    <motion.span
                       className="w-12 h-12 flex items-center justify-center rounded-full border-2 border-primary/40 bg-white/40 group-hover:bg-accent/80 transition-colors shadow-lg hover:shadow-xl"
                       whileHover={{ scale: 1.15 }}
                     >
@@ -1436,7 +1935,7 @@ export default function MHomesResort() {
                 </div>
 
                 {/* Carousel indicators */}
-                <motion.div 
+                <motion.div
                   className="absolute bottom-0 left-1/2 -translate-x-1/2 flex gap-3 mt-8"
                   initial={{ opacity: 0, y: 20 }}
                   whileInView={{ opacity: 1, y: 0 }}
@@ -1466,7 +1965,7 @@ export default function MHomesResort() {
       <section id="reviews" className="py-24 bg-gradient-to-b from-background via-muted/20 to-background relative overflow-hidden">
         {/* Animated background */}
         <div className="absolute inset-0 opacity-20">
-          <motion.div 
+          <motion.div
             className="absolute top-0 right-20 w-96 h-96 bg-accent/20 blur-[100px] rounded-full"
             animate={{ y: [0, 60, 0] }}
             transition={{ duration: 20, repeat: Infinity }}
@@ -1485,11 +1984,11 @@ export default function MHomesResort() {
                 Trusted Reviews
               </Badge>
             </motion.div>
-            <h2 className="luxury-heading text-4xl md:text-6xl mb-6 bg-clip-text text-transparent bg-gradient-to-r from-primary via-accent to-primary">
+            <h2 className="luxury-heading mb-6" style={{ fontSize: 'clamp(32px, 4vw, 56px)', fontWeight: 400, letterSpacing: '-0.02em', color: '#1A1A1A' }}>
               Guest Testimonials
             </h2>
-            <p className="luxury-text text-xl text-muted-foreground max-w-3xl mx-auto">
-              Discover what our guests are saying about their <span className="text-accent font-semibold">extraordinary experiences</span> at MHomes Resort.
+            <p className="luxury-text" style={{ fontWeight: 300, fontSize: '16px', color: '#4A4A4A', lineHeight: 1.8, maxWidth: '600px', margin: '0 auto' }}>
+              Discover what our guests are saying about their extraordinary experiences at MHomes Resort.
             </p>
           </motion.div>
 
@@ -1542,7 +2041,7 @@ export default function MHomesResort() {
             ))}
           </div>
 
-          <motion.div 
+          <motion.div
             className="text-center mt-16"
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -1574,12 +2073,12 @@ export default function MHomesResort() {
                 Ready to Book?
               </Badge>
             </motion.div>
-            
-            <h2 className="luxury-heading text-5xl md:text-6xl mb-8 bg-clip-text text-transparent bg-gradient-to-r from-primary via-accent to-primary font-bold">
+
+            <h2 className="luxury-heading mb-8" style={{ fontSize: 'clamp(32px, 4vw, 56px)', fontWeight: 400, letterSpacing: '-0.02em', color: '#1A1A1A' }}>
               Ready to Experience Paradise?
             </h2>
-            
-            <p className="luxury-text text-xl text-muted-foreground mb-12 leading-relaxed">
+
+            <p className="luxury-text mb-12" style={{ fontWeight: 300, fontSize: '16px', color: '#4A4A4A', lineHeight: 1.8, maxWidth: '600px', margin: '0 auto 48px' }}>
               Reserve your dream vacation at MHomes Resort. Choose your dates, select your perfect room, and create unforgettable memories.
             </p>
 
@@ -1588,9 +2087,9 @@ export default function MHomesResort() {
               whileTap={{ scale: 0.95 }}
             >
               <Link href="/reservation">
-                <Button 
-                  size="lg" 
-                  className="bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white px-10 py-7 text-xl font-bold rounded-2xl shadow-2xl hover:shadow-3xl transition-all inline-flex items-center gap-3"
+                <Button
+                  size="lg"
+                  className="bg-primary hover:bg-primary/90 text-primary-foreground px-10 py-7 text-xl font-bold rounded-2xl shadow-2xl hover:shadow-3xl transition-all inline-flex items-center gap-3"
                 >
                   Book Your Stay
                   <ArrowRight className="w-6 h-6" />
@@ -1618,10 +2117,10 @@ export default function MHomesResort() {
                 Get in Touch
               </Badge>
             </motion.div>
-            <h2 className="luxury-heading text-4xl md:text-6xl mb-6 bg-clip-text text-transparent bg-gradient-to-r from-primary via-accent to-primary">
+            <h2 className="luxury-heading mb-6" style={{ fontSize: 'clamp(32px, 4vw, 56px)', fontWeight: 400, letterSpacing: '-0.02em', color: '#1A1A1A' }}>
               Get in Touch
             </h2>
-            <p className="luxury-text text-xl text-muted-foreground max-w-3xl mx-auto">
+            <p className="luxury-text" style={{ fontWeight: 300, fontSize: '16px', color: '#4A4A4A', lineHeight: 1.8, maxWidth: '600px', margin: '0 auto' }}>
               Ready to experience paradise? Contact us to plan your perfect getaway or learn more about our luxury offerings.
             </p>
           </motion.div>
@@ -1636,7 +2135,7 @@ export default function MHomesResort() {
                 <h3 className="luxury-heading text-3xl mb-8 text-primary">Contact Information</h3>
                 <div className="space-y-6">
                   <motion.div className="flex items-start gap-6 group" whileHover={{ x: 10 }}>
-                    <motion.div 
+                    <motion.div
                       className="w-14 h-14 bg-gradient-to-br from-accent/20 to-accent/5 rounded-full flex items-center justify-center flex-shrink-0 group-hover:bg-gradient-to-br group-hover:from-accent group-hover:to-accent/60 transition-all duration-300 mt-1"
                       whileHover={{ scale: 1.1 }}
                     >
@@ -1644,12 +2143,12 @@ export default function MHomesResort() {
                     </motion.div>
                     <div>
                       <p className="luxury-heading font-bold text-lg text-primary mb-1">Resort Address</p>
-                      <p className="luxury-text text-muted-foreground text-lg">Tropical Paradise Island, Maldives</p>
+                      <p className="luxury-text text-muted-foreground text-lg">Madurai, Tamil Nadu</p>
                     </div>
                   </motion.div>
 
                   <motion.div className="flex items-start gap-6 group" whileHover={{ x: 10 }}>
-                    <motion.div 
+                    <motion.div
                       className="w-14 h-14 bg-gradient-to-br from-accent/20 to-accent/5 rounded-full flex items-center justify-center flex-shrink-0 group-hover:bg-gradient-to-br group-hover:from-accent group-hover:to-accent/60 transition-all duration-300 mt-1"
                       whileHover={{ scale: 1.1 }}
                     >
@@ -1657,12 +2156,12 @@ export default function MHomesResort() {
                     </motion.div>
                     <div>
                       <p className="luxury-heading font-bold text-lg text-primary mb-1">Phone</p>
-                      <p className="luxury-text text-muted-foreground text-lg">+1 (555) 123-4567</p>
+                      <p className="luxury-text text-muted-foreground text-lg">+91-9791035346</p>
                     </div>
                   </motion.div>
 
                   <motion.div className="flex items-start gap-6 group" whileHover={{ x: 10 }}>
-                    <motion.div 
+                    <motion.div
                       className="w-14 h-14 bg-gradient-to-br from-accent/20 to-accent/5 rounded-full flex items-center justify-center flex-shrink-0 group-hover:bg-gradient-to-br group-hover:from-accent group-hover:to-accent/60 transition-all duration-300 mt-1"
                       whileHover={{ scale: 1.1 }}
                     >
@@ -1670,29 +2169,11 @@ export default function MHomesResort() {
                     </motion.div>
                     <div>
                       <p className="luxury-heading font-bold text-lg text-primary mb-1">Email</p>
-                      <p className="luxury-text text-muted-foreground text-lg">info@mhomesresort.com</p>
+                      <p className="luxury-text text-muted-foreground text-lg">karthikeyan@mhomes.co.in</p>
                     </div>
                   </motion.div>
                 </div>
               </div>
-
-              <motion.div className="pt-8 border-t border-accent/20">
-                <h4 className="luxury-heading text-2xl mb-6 text-primary">Office Hours</h4>
-                <div className="space-y-4 text-lg">
-                  <motion.div className="flex justify-between items-center hover:text-accent transition-colors group" whileHover={{ x: 5 }}>
-                    <span className="luxury-heading font-semibold">Monday - Friday</span>
-                    <span className="luxury-text text-muted-foreground group-hover:text-accent transition-colors">9:00 AM - 6:00 PM</span>
-                  </motion.div>
-                  <motion.div className="flex justify-between items-center hover:text-accent transition-colors group" whileHover={{ x: 5 }}>
-                    <span className="luxury-heading font-semibold">Saturday</span>
-                    <span className="luxury-text text-muted-foreground group-hover:text-accent transition-colors">10:00 AM - 4:00 PM</span>
-                  </motion.div>
-                  <motion.div className="flex justify-between items-center hover:text-accent transition-colors group" whileHover={{ x: 5 }}>
-                    <span className="luxury-heading font-semibold">Sunday</span>
-                    <span className="luxury-text text-muted-foreground group-hover:text-accent transition-colors">12:00 PM - 4:00 PM</span>
-                  </motion.div>
-                </div>
-              </motion.div>
             </motion.div>
 
             <motion.div
@@ -1707,41 +2188,7 @@ export default function MHomesResort() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6 pt-8">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <motion.div whileHover={{ y: -3 }}>
-                      <label className="luxury-text text-sm font-semibold mb-3 block text-primary">First Name</label>
-                      <Input placeholder="John" className="rounded-lg border-2 border-accent/20 focus:border-accent/50 transition-all" />
-                    </motion.div>
-                    <motion.div whileHover={{ y: -3 }}>
-                      <label className="luxury-text text-sm font-semibold mb-3 block text-primary">Last Name</label>
-                      <Input placeholder="Doe" className="rounded-lg border-2 border-accent/20 focus:border-accent/50 transition-all" />
-                    </motion.div>
-                  </div>
-                  <motion.div whileHover={{ y: -3 }}>
-                    <label className="luxury-text text-sm font-semibold mb-3 block text-primary">Email</label>
-                    <Input type="email" placeholder="john@example.com" className="rounded-lg border-2 border-accent/20 focus:border-accent/50 transition-all" />
-                  </motion.div>
-                  <motion.div whileHover={{ y: -3 }}>
-                    <label className="luxury-text text-sm font-semibold mb-3 block text-primary">Subject</label>
-                    <Input placeholder="Inquiry about reservation" className="rounded-lg border-2 border-accent/20 focus:border-accent/50 transition-all" />
-                  </motion.div>
-                  <motion.div whileHover={{ y: -3 }}>
-                    <label className="luxury-text text-sm font-semibold mb-3 block text-primary">Message</label>
-                    <Textarea 
-                      placeholder="Tell us about your dream vacation..." 
-                      rows={4}
-                      className="rounded-lg border-2 border-accent/20 focus:border-accent/50 transition-all"
-                    />
-                  </motion.div>
-                  <motion.div
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                  >
-                    <Button className="w-full bg-gradient-to-r from-accent to-accent/80 text-white py-3 text-lg font-bold rounded-lg hover:shadow-xl transition-all">
-                      Send Message
-                      <ArrowRight className="ml-2 w-5 h-5" />
-                    </Button>
-                  </motion.div>
+                  <ContactFormComponent />
                 </CardContent>
               </Card>
             </motion.div>
@@ -1750,10 +2197,10 @@ export default function MHomesResort() {
       </section>
 
       {/* Footer */}
-      <footer className="bg-gradient-to-b from-primary to-primary/95 text-white py-16 relative overflow-hidden">
+      <footer className="bg-gradient-to-b from-primary to-primary/95 text-white py-8 relative overflow-hidden">
         {/* Decorative elements */}
         <div className="absolute inset-0 opacity-10">
-          <motion.div 
+          <motion.div
             className="absolute top-0 left-0 w-96 h-96 bg-accent rounded-full blur-3xl"
             animate={{ y: [0, 40, 0], x: [0, 20, 0] }}
             transition={{ duration: 20, repeat: Infinity }}
@@ -1761,30 +2208,32 @@ export default function MHomesResort() {
         </div>
 
         <div className="container mx-auto px-4 relative z-10">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-12">
-            <motion.div 
+          {/* Footer Logo - Top Left */}
+          <div className="mb-6">
+            <div
+              className="flex items-center justify-start overflow-hidden"
+              style={{ transform: 'scale(1.1)' }}
+            >
+              <Image
+                src="/mhomes-logo.png"
+                alt="MHomes Resort Logo"
+                width={180}
+                height={180}
+                priority
+                style={{ width: 'auto' }}
+                className="object-contain drop-shadow-lg"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
+            <motion.div
               className="md:col-span-2"
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
             >
-              <div className="flex items-center space-x-3 mb-6">
-                <motion.div 
-                  className="flex items-center justify-center overflow-hidden"
-                  whileHover={{ scale: 1.1 }}
-                >
-                  <Image
-                    src="/mhomes-logo.png"
-                    alt="MHomes Resort Logo"
-                    width={120}
-                    height={120}
-                    priority
-                    style={{ width: 'auto' }}
-                    className="object-contain drop-shadow-lg"
-                  />
-                </motion.div>
-              </div>
-              <p className="luxury-text text-white/80 mb-6 leading-relaxed text-lg">
-                Experience luxury redefined at <span className="font-bold text-white">MHomes Resort</span>, where every moment becomes a treasured memory 
+              <p className="luxury-text text-white/80 mb-4 leading-relaxed text-base">
+                Experience luxury redefined at <span className="font-bold text-white">MHomes Resort</span>, where every moment becomes a treasured memory
                 in our tropical paradise.
               </p>
               <div className="flex items-center gap-4 flex-wrap">
@@ -1802,19 +2251,19 @@ export default function MHomesResort() {
                 </motion.div>
               </div>
             </motion.div>
-            
+
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1 }}
             >
-              <h4 className="luxury-heading text-lg mb-6 font-bold">Quick Links</h4>
-              <div className="space-y-3">
+              <h4 className="luxury-heading text-lg mb-4 font-bold">Quick Links</h4>
+              <div className="space-y-2">
                 {navigationItems.slice(0, 4).map((item) => (
                   <motion.div key={item.name} whileHover={{ x: 5 }}>
                     <Link
                       href={item.href}
-                      className="luxury-text text-white/80 hover:text-accent transition-colors font-semibold"
+                      className="luxury-text text-white/80 hover:text-accent transition-colors font-semibold text-sm"
                     >
                       {item.name}
                     </Link>
@@ -1822,19 +2271,19 @@ export default function MHomesResort() {
                 ))}
               </div>
             </motion.div>
-            
+
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 }}
             >
-              <h4 className="luxury-heading text-lg mb-6 font-bold">More Info</h4>
-              <div className="space-y-3">
+              <h4 className="luxury-heading text-lg mb-4 font-bold">More Info</h4>
+              <div className="space-y-2">
                 {navigationItems.slice(4).map((item) => (
                   <motion.div key={item.name} whileHover={{ x: 5 }}>
                     <Link
                       href={item.href}
-                      className="luxury-text text-white/80 hover:text-accent transition-colors font-semibold"
+                      className="luxury-text text-white/80 hover:text-accent transition-colors font-semibold text-sm"
                     >
                       {item.name}
                     </Link>
@@ -1843,23 +2292,23 @@ export default function MHomesResort() {
               </div>
             </motion.div>
           </div>
-          
+
           <motion.div
             initial={{ scaleX: 0 }}
             whileInView={{ scaleX: 1 }}
             transition={{ duration: 0.8 }}
             className="origin-left"
           >
-            <Separator className="my-8 bg-white/20" />
+            <Separator className="my-4 bg-white/20" />
           </motion.div>
-          
-          <motion.div 
+
+          <motion.div
             className="flex flex-col md:flex-row items-center justify-between"
             initial={{ opacity: 0 }}
             whileInView={{ opacity: 1 }}
             transition={{ delay: 0.3 }}
           >
-            <p className="luxury-text text-white/60 text-sm font-semibold">
+            <p className="luxury-text text-white/60 text-xs font-semibold">
               © 2025 <span className="text-accent">MHomes Resort</span>. All rights reserved. | Crafted with luxury and elegance
             </p>
             <div className="flex items-center gap-8 mt-4 md:mt-0">

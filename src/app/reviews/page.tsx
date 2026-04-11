@@ -63,14 +63,14 @@ export default function ReviewsPage() {
           animate={{ backgroundPosition: ["0% 0%", "100% 100%"] }}
           transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
           style={{
-            backgroundImage: 'linear-gradient(135deg, rgba(245, 158, 11, 0.08) 0%, rgba(59, 130, 246, 0.08) 50%, rgba(245, 158, 11, 0.08) 100%)',
+            backgroundImage: 'linear-gradient(135deg, rgba(201, 168, 76, 0.12) 0%, rgba(107, 63, 42, 0.08) 50%, rgba(201, 168, 76, 0.12) 100%)',
             backgroundSize: '400% 400%'
           }}
         />
 
         {/* Floating gradient orbs */}
         <motion.div
-          className="absolute top-0 right-1/4 w-96 h-96 bg-orange-500/10 rounded-full blur-3xl"
+          className="absolute top-0 right-1/4 w-96 h-96 bg-secondary/10 rounded-full blur-3xl"
           animate={{ y: [0, 40, 0], x: [0, 20, 0] }}
           transition={{ duration: 10, repeat: Infinity }}
         />
@@ -89,7 +89,7 @@ export default function ReviewsPage() {
             className="mb-10"
           >
             <Link href="/">
-              <Button variant="ghost" className="text-primary hover:text-accent gap-2 hover:bg-accent/10">
+              <Button variant="ghost" className="text-primary hover:text-secondary gap-2 hover:bg-secondary/10">
                 <ArrowLeft size={20} />
                 Back to Home
               </Button>
@@ -104,15 +104,15 @@ export default function ReviewsPage() {
             className="text-center mb-12"
           >
             <motion.div className="inline-block mb-4">
-              <Badge className="bg-accent/20 text-accent border border-accent/50 px-4 py-2 rounded-full">
+              <Badge className="bg-secondary/20 text-secondary border border-secondary/50 px-4 py-2 rounded-full">
                 ⭐ Trusted Reviews
               </Badge>
             </motion.div>
-            <h1 className="luxury-heading text-6xl md:text-7xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary via-accent to-primary mb-6">
+            <h1 className="luxury-heading text-6xl md:text-7xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary via-secondary to-primary mb-6">
               Guest Reviews
             </h1>
             <p className="luxury-text text-xl text-muted-foreground max-w-3xl mx-auto">
-              Discover what our <span className="text-accent font-semibold">esteemed guests</span> love about MHomes Resort
+              Discover what our <span className="text-secondary font-semibold">esteemed guests</span> love about MHomes Resort
             </p>
           </motion.div>
 

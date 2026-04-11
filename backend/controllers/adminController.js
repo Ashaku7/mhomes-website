@@ -43,6 +43,17 @@ const cancelBooking = async (req, res, next) => {
     }
 };
 
+// PATCH /api/admin/bookings/:id
+const updateBookingStatus = async (req, res, next) => {
+    try {
+        const { bookingStatus } = req.body;
+        const result = await adminService.updateBookingStatus(req.params.id, bookingStatus);
+        res.status(200).json({ success: true, data: result });
+    } catch (err) {
+        next(err);
+    }
+};
+
 // GET /api/admin/rooms
 const getAllRooms = async (req, res, next) => {
     try {
@@ -93,13 +104,24 @@ const updatePayment = async (req, res, next) => {
 };
 
 // PATCH /api/admin/bookings/:id/checkin
+const getCheckInRoomOptions = async (req, res, next) => {
+    try {
+        const result = await adminService.getCheckInRoomOptions(req.params.id);
+        res.status(200).json({ success: true, data: result });
+    } catch (err) {
+        next(err);
+    }
+};
+
+// PATCH /api/admin/bookings/:id/checkin
 const checkInGuest = async (req, res, next) => {
     try {
-        const { address, proofType, totalGuests } = req.body;
+        const { address, proofType, totalGuests, roomIds } = req.body;
         const result = await adminService.checkInGuest(req.params.id, {
             address,
             proofType,
             totalGuests,
+            roomIds,
         });
         res.status(200).json({ success: true, data: result });
     } catch (err) {
@@ -183,18 +205,31 @@ const confirmPaymentByAdmin = async (req, res, next) => {
     }
 };
 
+// GET /api/payments/today-revenue
+const getTodayRevenue = async (req, res, next) => {
+    try {
+        const result = await adminService.getTodayRevenue();
+        res.status(200).json({ success: true, revenue: result });
+    } catch (err) {
+        next(err);
+    }
+};
+
 module.exports = {
     getDashboard,
     getAllBookings,
     getBookingById,
     cancelBooking,
+    updateBookingStatus,
     getAllRooms,
     updateRoom,
     getTodayActivity,
     updatePayment,
+    getCheckInRoomOptions,
     checkInGuest,
     createWalkinBooking,
     searchPayments,
     cancelPayment,
     confirmPaymentByAdmin,
+    getTodayRevenue,
 };

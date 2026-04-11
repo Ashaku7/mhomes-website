@@ -61,7 +61,7 @@ export async function GET(request: NextRequest) {
           },
           {
             id: 'deluxe-studio',
-            name: 'Deluxe Studio',
+            name: 'Premium Plus Room',
             price: 320,
             features: ['Garden View', 'Double Bed', '35 sqm', 'Work Desk'],
             available: true
@@ -321,9 +321,9 @@ export async function POST(request: NextRequest) {
         const lowerMessage = userMessage.toLowerCase()
 
         if (lowerMessage.includes('room') || lowerMessage.includes('accommodation')) {
-          response = 'We offer luxurious accommodations including Ocean Villas, Beach Suites, Premium Rooms, and Deluxe Studios. Prices range from $320 to $1,200 per night. Would you like more details on any specific room type?'
+          response = 'We offer luxurious accommodations including Ocean Villas, Beach Suites, Premium Rooms, and Premium Plus Rooms. Prices range from $320 to $1,200 per night. Would you like more details on any specific room type?'
         } else if (lowerMessage.includes('price') || lowerMessage.includes('cost')) {
-          response = 'Our room rates vary by season and type. Ocean Villas start at $1,200/night, Beach Suites at $800/night, Premium Rooms at $450/night, and Deluxe Studios at $320/night. Contact us for current availability and special rates.'
+          response = 'Our room rates vary by season and type. Ocean Villas start at $1,200/night, Beach Suites at $800/night, Premium Rooms at $450/night, and Premium Plus Rooms at $320/night. Contact us for current availability and special rates.'
         } else if (lowerMessage.includes('dining') || lowerMessage.includes('restaurant') || lowerMessage.includes('food')) {
           response = 'Enjoy world-class dining at our Azure Restaurant (Michelin-starred), Sunset Lounge (bar & grill), and Poolside Café. We serve international fusion, Mediterranean, and continental cuisine.'
         } else if (lowerMessage.includes('spa') || lowerMessage.includes('wellness') || lowerMessage.includes('massage')) {
@@ -356,7 +356,7 @@ export async function POST(request: NextRequest) {
       try {
         const prompt = `You are a helpful virtual assistant for MHomes Resort, a luxury resort in the Maldives. Provide friendly, informative responses about the resort. Key information:
 - Location: Tropical Paradise Island, Maldives
-- Accommodations: Ocean Villas ($1,200/night), Beach Suites ($800/night), Premium Rooms ($450/night), Deluxe Studios ($320/night)
+- Accommodations: Ocean Villas ($1,200/night), Beach Suites ($800/night), Premium Rooms ($450/night), Premium Plus Rooms ($320/night)
 - Dining: Azure Restaurant (Michelin-starred), Sunset Lounge (bar & grill), Poolside Café
 - Activities: Spa treatments, water sports (diving, snorkeling, kayaking), fitness center, cultural tours
 - Facilities: Private beach, infinity pool, high-speed WiFi, valet parking, luxury spa

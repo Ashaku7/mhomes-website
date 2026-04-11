@@ -27,19 +27,37 @@ const bookingInclude = {
 const getAllBookings = async ({ status, source, date } = {}) => {
     const where = {};
 
-    if (status) where.bookingStatus = status;
-    if (source) where.bookingSource = source;
+    if (status) {
+        const validStatuses = ['pending', 'confirmed', 'cancelled', 'checked_in', 'checked_out'];
+        if (!validStatuses.includes(status)) {
+            throw createError(400, `Invalid status. Must be one of: ${validStatuses.join(', ')}`);
+        }
+        where.bookingStatus = status;
+    }
+
+    if (source) {
+        const validSources = ['online', 'offline'];
+        if (!validSources.includes(source)) {
+            throw createError(400, `Invalid source. Must be one of: ${validSources.join(', ')}`);
+        }
+        where.bookingSource = source;
+    }
+
     if (date) {
-        const day = new Date(date);
-        const nextDay = new Date(date);
+        const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+        if (!dateRegex.test(date)) {
+            throw createError(400, 'Date must be in YYYY-MM-DD format.');
+        }
+        const day = new Date(date + 'T00:00:00Z');
+        const nextDay = new Date(date + 'T00:00:00Z');
         nextDay.setDate(nextDay.getDate() + 1);
-        where.createdAt = { gte: day, lt: nextDay };
+        where.checkIn = { gte: day, lt: nextDay };
     }
 
     const bookings = await prisma.booking.findMany({
         where,
         include: bookingInclude,
-        orderBy: { createdAt: 'desc' },
+        orderBy: { checkIn: 'asc' },
     });
 
     return {
@@ -64,6 +82,7 @@ const getBookingById = async (id) => {
 const cancelBooking = async (id, reason) => {
     const booking = await prisma.booking.findUnique({
         where: { id: parseInt(id) },
+        include: { payments: true },
     });
 
     if (!booking) throw createError(404, 'Booking not found.');
@@ -72,20 +91,56 @@ const cancelBooking = async (id, reason) => {
         throw createError(409, 'Booking is already cancelled.');
     }
 
+    const updated = await prisma.$transaction(async (tx) => {
+        // Update booking status to cancelled
+        const updatedBooking = await tx.booking.update({
+            where: { id: parseInt(id) },
+            data: {
+                bookingStatus: 'cancelled',
+            },
+            include: bookingInclude,
+        });
+
+        // Update all associated payments to cancelled
+        if (booking.payments && booking.payments.length > 0) {
+            await tx.payment.updateMany({
+                where: { bookingId: parseInt(id) },
+                data: { paymentStatus: 'cancelled' },
+            });
+        }
+
+        return updatedBooking;
+    });
+
+    return {
+        ...formatBooking(updated),
+        message: 'Booking cancelled successfully and payment cancelled.',
+    };
+};
+
+// ─── SERVICE 3.5: Update booking status ────────────────────────
+const updateBookingStatus = async (id, newStatus) => {
+    const validStatuses = ['pending', 'confirmed', 'checked_in', 'checked_out', 'cancelled'];
+    if (!validStatuses.includes(newStatus)) {
+        throw createError(400, `Invalid status. Must be one of: ${validStatuses.join(', ')}`);
+    }
+
+    const booking = await prisma.booking.findUnique({
+        where: { id: parseInt(id) },
+        include: bookingInclude,
+    });
+
+    if (!booking) throw createError(404, 'Booking not found.');
+
     const updated = await prisma.booking.update({
         where: { id: parseInt(id) },
-        data: {
-            bookingStatus: 'cancelled',
-            notes: reason
-                ? `${booking.notes ? booking.notes + ' | ' : ''}Cancelled: ${reason}`
-                : booking.notes,
-        },
+        data: { bookingStatus: newStatus },
         include: bookingInclude,
     });
 
     return {
         ...formatBooking(updated),
-        message: 'Booking cancelled successfully.',
+        message: `Booking status updated to ${newStatus}.`,
     };
 };
 
@@ -159,7 +214,7 @@ const getDashboardSummary = async () => {
             where: { checkIn: { gte: today, lt: tomorrow }, bookingStatus: 'confirmed' },
         }),
         prisma.booking.count({
-            where: { checkOut: { gte: today, lt: tomorrow }, bookingStatus: { in: ['pending', 'confirmed'] } },
+            where: { checkOut: { gte: today, lt: tomorrow }, bookingStatus: 'checked_in' },
         }),
         prisma.payment.aggregate({
             where: { paymentStatus: 'paid' },
@@ -217,7 +272,7 @@ const getTodayActivity = async () => {
         prisma.booking.findMany({
             where: {
                 checkOut: { gte: today, lt: tomorrow },
-                bookingStatus: 'confirmed',
+                bookingStatus: 'checked_in',
             },
             include: bookingInclude,
             orderBy: { checkOut: 'asc' },
@@ -234,13 +289,14 @@ const getTodayActivity = async () => {
 // ─── HELPER: format booking output ───────────────────────────
 const formatBooking = (b) => ({
     id: b.id,
+    bookingReference: b.bookingReference,
     bookingStatus: b.bookingStatus,
     bookingSource: b.bookingSource,
     checkIn: b.checkIn,
     checkOut: b.checkOut,
     totalGuests: b.totalGuests,
     totalAmount: parseFloat(b.totalAmount),
-    notes: b.notes,
+    extraExpense: b.extraExpense,
     createdAt: b.createdAt,
     guest: b.guest,
     bookedBy: b.user || null,
@@ -335,14 +391,87 @@ const updatePayment = async (paymentId, { paymentMethod, transactionId, paymentD
     };
 };
 
-// ─── SERVICE 9: Guest check-in ────────────────────────────────
-const checkInGuest = async (bookingId, { address, proofType, totalGuests }) => {
+const CONFLICTING_BOOKING_STATUSES = ['pending', 'confirmed', 'checked_in', 'checked_out'];
+
+// ─── SERVICE 9a: Get room options for check-in reassignment ───
+const getCheckInRoomOptions = async (bookingId) => {
     if (!bookingId) {
         throw createError(400, 'bookingId is required.');
     }
 
+    const parsedBookingId = parseInt(bookingId);
+
     const booking = await prisma.booking.findUnique({
-        where: { id: parseInt(bookingId) },
+        where: { id: parsedBookingId },
+        include: bookingInclude,
+    });
+
+    if (!booking) {
+        throw createError(404, 'Booking not found.');
+    }
+
+    if (booking.bookingStatus !== 'confirmed') {
+        throw createError(409, 'Room reassignment is only available for "confirmed" bookings during check-in.');
+    }
+
+    const currentRooms = booking.bookingRooms.map((br) => br.room);
+    const currentRoomIdSet = new Set(currentRooms.map((r) => r.id));
+
+    const conflictingRoomRows = await prisma.bookingRoom.findMany({
+        where: {
+            bookingId: { not: parsedBookingId },
+            booking: {
+                bookingStatus: { in: CONFLICTING_BOOKING_STATUSES },
+                checkIn: { lt: booking.checkOut },
+                checkOut: { gt: booking.checkIn },
+            },
+        },
+        select: { roomId: true },
+    });
+
+    const blockedRoomIdSet = new Set(conflictingRoomRows.map((row) => row.roomId));
+
+    const freeRooms = await prisma.room.findMany({
+        where: {
+            status: 'active',
+            id: { notIn: Array.from(blockedRoomIdSet) },
+        },
+        orderBy: { roomNumber: 'asc' },
+    });
+
+    const mergedRoomMap = new Map();
+    currentRooms.forEach((room) => mergedRoomMap.set(room.id, room));
+    freeRooms.forEach((room) => mergedRoomMap.set(room.id, room));
+
+    const availableRooms = Array.from(mergedRoomMap.values())
+        .sort((a, b) => parseInt(a.roomNumber) - parseInt(b.roomNumber))
+        .map((room) => ({
+            id: room.id,
+            roomNumber: room.roomNumber,
+            roomType: room.roomType,
+            pricePerNight: parseFloat(room.pricePerNight),
+            maxGuests: room.maxGuests,
+            status: room.status,
+            isCurrent: currentRoomIdSet.has(room.id),
+        }));
+
+    return {
+        bookingId: parsedBookingId,
+        roomCount: currentRooms.length,
+        currentRoomIds: Array.from(currentRoomIdSet),
+        availableRooms,
+    };
+};
+
+// ─── SERVICE 9: Guest check-in ────────────────────────────────
+const checkInGuest = async (bookingId, { address, proofType, totalGuests, roomIds }) => {
+    if (!bookingId) {
+        throw createError(400, 'bookingId is required.');
+    }
+
+    const parsedBookingId = parseInt(bookingId);
+    const booking = await prisma.booking.findUnique({
+        where: { id: parsedBookingId },
         include: { guest: true },
     });
 
@@ -355,13 +484,114 @@ const checkInGuest = async (bookingId, { address, proofType, totalGuests }) => {
     }
 
     if (proofType) {
-        const validProofTypes = ['aadhaar', 'passport'];
+        const validProofTypes = ['aadhaar', 'passport', 'driving_license', 'voter_id'];
         if (!validProofTypes.includes(proofType)) {
             throw createError(400, `proofType must be one of: ${validProofTypes.join(', ')}`);
         }
     }
 
+    const bookingWithRooms = await prisma.booking.findUnique({
+        where: { id: parsedBookingId },
+        include: {
+            bookingRooms: { select: { roomId: true } },
+        },
+    });
+
+    const currentRoomIds = bookingWithRooms?.bookingRooms?.map((br) => br.roomId) || [];
+    const requiredRoomCount = currentRoomIds.length;
+
+    const selectedRoomIds = Array.isArray(roomIds)
+        ? [...new Set(roomIds.map((id) => parseInt(id)).filter((id) => Number.isInteger(id) && id > 0))]
+        : currentRoomIds;
+
+    if (selectedRoomIds.length !== requiredRoomCount) {
+        throw createError(400, `Exactly ${requiredRoomCount} room(s) must be selected for check-in.`);
+    }
+
     const result = await prisma.$transaction(async (tx) => {
+        const lockedRooms = await tx.$queryRawUnsafe(
+            `SELECT id, room_number, status
+             FROM rooms
+             WHERE id = ANY($1::int[])
+             FOR UPDATE`,
+            selectedRoomIds
+        );
+
+        if (lockedRooms.length !== selectedRoomIds.length) {
+            throw createError(404, 'One or more selected rooms do not exist.');
+        }
+
+        const unavailableRoomRows = lockedRooms.filter((r) => r.status !== 'active');
+        if (unavailableRoomRows.length > 0) {
+            const roomNums = unavailableRoomRows.map((r) => r.room_number).join(', ');
+            throw createError(409, `Room(s) ${roomNums} are not active.`);
+        }
+
+        const conflictingAssignments = await tx.bookingRoom.findMany({
+            where: {
+                roomId: { in: selectedRoomIds },
+                bookingId: { not: parsedBookingId },
+                booking: {
+                    bookingStatus: { in: CONFLICTING_BOOKING_STATUSES },
+                    checkIn: { lt: booking.checkOut },
+                    checkOut: { gt: booking.checkIn },
+                },
+            },
+            include: {
+                room: { select: { roomNumber: true } },
+            },
+        });
+
+        if (conflictingAssignments.length > 0) {
+            const conflicts = conflictingAssignments.map((row) => row.room.roomNumber).join(', ');
+            throw createError(409, `Room(s) ${conflicts} are no longer available for these dates.`);
+        }
+
+        const isRoomSelectionChanged =
+            selectedRoomIds.length !== currentRoomIds.length ||
+            selectedRoomIds.some((id) => !currentRoomIds.includes(id));
+
+        if (isRoomSelectionChanged) {
+            await tx.bookingRoom.deleteMany({
+                where: { bookingId: parsedBookingId },
+            });
+
+            await tx.bookingRoom.createMany({
+                data: selectedRoomIds.map((roomId) => ({
+                    bookingId: parsedBookingId,
+                    roomId,
+                })),
+            });
+
+            // Recalculate total amount when rooms change
+            const selectedRoomsWithPrices = await tx.room.findMany({
+                where: { id: { in: selectedRoomIds } },
+                select: { pricePerNight: true },
+            });
+
+            const checkInDate = new Date(booking.checkIn);
+            const checkOutDate = new Date(booking.checkOut);
+            const nights = Math.ceil((checkOutDate - checkInDate) / (1000 * 60 * 60 * 24));
+            
+            const totalPerNight = selectedRoomsWithPrices.reduce(
+                (sum, room) => sum + parseFloat(room.pricePerNight),
+                0
+            );
+            const newTotalAmount = parseFloat((totalPerNight * nights).toFixed(2));
+
+            // Update payment amount to match new total
+            await tx.payment.updateMany({
+                where: { bookingId: parsedBookingId },
+                data: { amount: newTotalAmount },
+            });
+
+            // Update booking with new total amount
+            await tx.booking.update({
+                where: { id: parsedBookingId },
+                data: { totalAmount: newTotalAmount },
+            });
+        }
+
         // Update Guest
         const updatedGuest = await tx.guest.update({
             where: { id: booking.guestId },
@@ -373,7 +603,7 @@ const checkInGuest = async (bookingId, { address, proofType, totalGuests }) => {
 
         // Update Booking status to checked_in
         const updatedBooking = await tx.booking.update({
-            where: { id: parseInt(bookingId) },
+            where: { id: parsedBookingId },
             data: {
                 bookingStatus: 'checked_in',
                 totalGuests: totalGuests ? parseInt(totalGuests) : booking.totalGuests,
@@ -383,7 +613,9 @@ const checkInGuest = async (bookingId, { address, proofType, totalGuests }) => {
 
         return {
             ...formatBooking(updatedBooking),
-            message: 'Guest checked in successfully.',
+            message: isRoomSelectionChanged
+                ? 'Guest checked in and room assignment updated successfully.'
+                : 'Guest checked in successfully.',
         };
     });
 
@@ -510,7 +742,7 @@ const createWalkinBooking = async ({
         const bookedRoomData = await tx.bookingRoom.findMany({
             where: {
                 booking: {
-                    bookingStatus: { in: ['pending', 'confirmed'] },
+                    bookingStatus: { in: ['pending', 'confirmed', 'checked_in', 'checked_out'] },
                     checkIn: { lt: co },
                     checkOut: { gt: ci },
                 },
@@ -679,6 +911,7 @@ const searchPayments = async ({ bookingReference, guestName, phone } = {}) => {
                     bookingReference: true,
                     checkIn: true,
                     checkOut: true,
+                    bookingStatus: true,
                     totalAmount: true,
                     guest: {
                         select: {
@@ -822,18 +1055,44 @@ const confirmPayment = async (bookingId) => {
     };
 };
 
+// ─── SERVICE 12: Get today's revenue ───────────────────────────
+const getTodayRevenue = async () => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    
+    const payments = await prisma.payment.findMany({
+        where: {
+            paymentStatus: 'paid',
+            paymentDate: {
+                gte: today,
+                lt: tomorrow,
+            },
+        },
+    });
+    
+    const revenue = payments.reduce((sum, payment) => sum + parseFloat(payment.amount), 0);
+    
+    return parseFloat(revenue.toFixed(2));
+};
+
 module.exports = {
     getAllBookings,
     getBookingById,
     cancelBooking,
+    updateBookingStatus,
     getAllRooms,
     updateRoom,
     getDashboardSummary,
     getTodayActivity,
     updatePayment,
+    getCheckInRoomOptions,
     checkInGuest,
     createWalkinBooking,
     searchPayments,
     cancelPayment,
     confirmPayment,
+    getTodayRevenue,
 };

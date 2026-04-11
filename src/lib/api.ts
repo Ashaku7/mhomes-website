@@ -167,6 +167,9 @@ export const adminApi = {
   getBookingById: (id: number) =>
     api.get(`/api/admin/bookings/${id}`),
 
+  updateBookingStatus: (id: number, bookingStatus: string) =>
+    api.patch(`/api/admin/bookings/${id}`, { bookingStatus }),
+
   cancelBooking: (id: number, reason?: string) =>
     api.patch(`/api/admin/bookings/${id}/cancel`, { reason }),
 

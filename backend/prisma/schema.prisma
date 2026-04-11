@@ -51,6 +51,7 @@ enum PaymentStatus {
   yet_to_pay
   paid
   refunded
+  cancelled
 }
 
 enum IdProofType {
@@ -124,7 +125,7 @@ model Booking {
   bookingStatus    BookingStatus @default(pending) @map("booking_status")
   bookingSource    BookingSource @map("booking_source")
   totalAmount      Decimal       @map("total_amount") @db.Decimal(10, 2)
-  notes            String?
+  extraExpense     String?       @map("extra_expense")
   createdAt        DateTime      @default(now()) @map("created_at")
 
   guest            Guest         @relation(fields: [guestId], references: [id])
@@ -171,4 +172,24 @@ model Payment {
   @@index([bookingId])
   @@index([paymentStatus])
   @@map("payments")
+}
+
+// ─── TABLE 7: Daily Counter ───────────────────────────────
+
+model DailyCounter {
+  date  String @id
+  count Int    @default(0)
+  @@map("daily_counters")
+}
+
+//authentication
+
+model AdminUser {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  name      String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  @@map("admin_users")
 }

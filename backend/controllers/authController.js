@@ -26,8 +26,8 @@ const login = async (req, res, next) => {
 // GET /api/auth/me
 const getMe = async (req, res, next) => {
     try {
-        const user = await authService.getMe(req.user.id);
-        res.status(200).json({ success: true, data: user });
+        // No user data available without authentication
+        res.status(401).json({ success: false, message: 'Not authenticated' });
     } catch (err) {
         next(err);
     }

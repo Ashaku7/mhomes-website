@@ -115,11 +115,11 @@ mhomes-resort/
 
 The website features 10 comprehensive sections:
 
-1. **Navigation Bar** - Fixed header with logo, menu, and "Book Now" CTA button
+1. **Navigation Bar** - Fixed header with logo, menu, and "Reserve now" CTA button
 2. **Hero Section** - Video background with resort name, tagline, and search form
 3. **Luxury Redefined** - Amenities showcase with 5 circular icon cards
 4. **Story Section** - 4-part narrative (4 of M) with images and descriptions
-5. **Accommodations** - Room cards display (Premium Room, Deluxe Studio) with details
+5. **Accommodations** - Room cards display (Premium Room, Premium Plus Room) with details
 6. **Services** - 4-column service showcase (Concierge, Spa, Restaurant, etc.)
 7. **Highlights** - Key features with icons and descriptions
 8. **Gallery** - Photo carousel showcasing resort locations

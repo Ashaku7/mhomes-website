@@ -13,7 +13,9 @@ router.get('/bookings', adminController.getAllBookings);
 router.get('/bookings/today', adminController.getTodayActivity);
 router.get('/bookings/:id', adminController.getBookingById);
 
+router.patch('/bookings/:id', adminController.updateBookingStatus);
 router.patch('/bookings/:id/cancel', adminController.cancelBooking);
+router.get('/bookings/:id/checkin-rooms', adminController.getCheckInRoomOptions);
 router.patch('/bookings/:id/checkin', adminController.checkInGuest);
 router.patch('/bookings/:id/confirm-payment', adminController.confirmPaymentByAdmin);
 
@@ -22,6 +24,7 @@ router.post('/bookings/walkin', adminController.createWalkinBooking);
 
 // ── Payments ──────────────────────────────────────────────────
 router.get('/payments/search', adminController.searchPayments);
+router.get('/payments/today-revenue', adminController.getTodayRevenue);
 router.patch('/payments/:id', adminController.updatePayment);
 router.patch('/payments/:id/cancel', adminController.cancelPayment);
 

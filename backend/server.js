@@ -5,7 +5,9 @@ require('dotenv').config();
 
 // ─── 2. Imports ─────────────────────────────────────────────────────────────
 const express = require('express');
+const helmet = require('helmet');
 const cors = require('cors');
+const rateLimit = require('express-rate-limit');
 
 const env = require('./config/env');
 const requestLogger = require('./middlewares/requestLogger');
@@ -14,6 +16,7 @@ const { errorHandler } = require('./middlewares/errorHandler');
 // ─── Route modules ───────────────────────────────────────────────────────────
 const healthRoutes = require('./routes/healthRoutes');
 const bookingRoutes = require('./routes/bookingRoutes');
+const contactRoutes = require('./routes/contactRoutes');
 const authRoutes = require('./routes/authRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 
@@ -24,32 +27,69 @@ const adminRoutes = require('./routes/adminRoutes');
 // ─── 3. Create Express app ───────────────────────────────────────────────────
 const app = express();
 
-// ─── 4. Global Middleware ────────────────────────────────────────────────────
-app.use(
-    cors({
-        origin: (origin, callback) => {
-            // Allow requests with no origin (e.g. mobile apps, curl)
-            if (!origin || env.ALLOWED_ORIGINS.includes(origin)) {
-                callback(null, true);
-            } else {
-                callback(new Error(`CORS: Origin '${origin}' not allowed`));
-            }
-        },
-        methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-        allowedHeaders: ['Content-Type', 'Authorization'],
-        credentials: true,
-    })
-);
+// ─── 4. Global Middleware (in exact order: Helmet → CORS → Rate Limiting) ────
+
+// 1. HELMET (security headers)
+app.use(helmet());
+
+// 2. CORS (only allow frontend)
+app.use(cors({
+    origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+    methods: ['GET', 'POST', 'PATCH', 'DELETE'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'x-user-email'],
+    credentials: true
+}));
+
+// 3. RATE LIMITING
+
+// Global limit (all routes)
+const globalLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 100,
+    message: { error: 'Too many requests. Please try again later.' },
+    standardHeaders: true,
+    legacyHeaders: false
+});
+app.use(globalLimiter);
+
+// Contact form limit
+const contactLimiter = rateLimit({
+    windowMs: 60 * 60 * 1000,
+    max: 3,
+    message: { error: 'Too many messages sent. Please try again later.' },
+    standardHeaders: true,
+    legacyHeaders: false
+});
+
+// Booking limit
+const bookingLimiter = rateLimit({
+    windowMs: 60 * 60 * 1000,
+    max: 5,
+    message: { error: 'Too many booking attempts. Please try again later.' },
+    standardHeaders: true,
+    legacyHeaders: false
+});
+
+// Admin limit (higher limit for internal operations)
+const adminLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 500,
+    message: { error: 'Too many requests. Please try again later.' },
+    standardHeaders: true,
+    legacyHeaders: false
+});
 
 app.use(express.json({ limit: '10kb' }));       // Parse JSON bodies
 app.use(express.urlencoded({ extended: true })); // Parse URL-encoded bodies
 app.use(requestLogger);                          // Dev request logging
 
-// ─── 5. Routes ───────────────────────────────────────────────────────────────
+// ─── 5. Routes (with specific rate limiters) ────────────────────────────────
 app.use('/health', healthRoutes);
 app.use('/api', bookingRoutes);
+app.use('/api/contact', contactLimiter, contactRoutes);
+app.use('/api/bookings/online', bookingLimiter);
 app.use('/api/auth', authRoutes);
-app.use('/api/admin', adminRoutes);
+app.use('/api/admin', adminLimiter, adminRoutes);
 
 // app.use('/api/v1/properties', propertyRoutes);
 // app.use('/api/v1/users',      userRoutes);

@@ -43,3 +43,4 @@ router.post('/', controller.createBooking);
 router.post('/:id/confirm-payment', controller.confirmPayment);
 
 module.exports = router;
+

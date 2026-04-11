@@ -1,5 +1,7 @@
 // controllers/bookingController.js
+const axios = require('axios');
 const bookingService = require('../services/bookingService');
+const { sendBookingConfirmation } = require('../utils/emailService');
 
 // GET /api/rooms/search
 const searchRooms = async (req, res, next) => {
@@ -42,7 +44,32 @@ const getAvailableRooms = async (req, res, next) => {
 // POST /api/bookings/online
 const createOnlineBooking = async (req, res, next) => {
     try {
-        const { fullName, email, phone, members, roomIds, checkIn, checkOut, totalGuests, bookingSource, notes } = req.body;
+        const { fullName, email, phone, members, roomIds, checkIn, checkOut, totalGuests, bookingSource, extraExpense, captchaToken } = req.body;
+
+        // ── Verify reCAPTCHA token ──────────────────────────────────────────
+        if (!captchaToken) {
+            return res.status(400).json({ success: false, message: 'CAPTCHA token is required.' });
+        }
+
+        try {
+            const captchaResponse = await axios.post(
+                'https://www.google.com/recaptcha/api/siteverify',
+                null,
+                {
+                    params: {
+                        secret: process.env.RECAPTCHA_SECRET_KEY,
+                        response: captchaToken
+                    }
+                }
+            );
+
+            if (!captchaResponse.data.success) {
+                return res.status(400).json({ success: false, message: 'CAPTCHA verification failed' });
+            }
+        } catch (captchaErr) {
+            console.error('[CAPTCHA] Verification error:', captchaErr.message);
+            return res.status(400).json({ success: false, message: 'CAPTCHA verification failed' });
+        }
 
         // Validate required fields
         if (!fullName || !email || !phone) {
@@ -63,8 +90,29 @@ const createOnlineBooking = async (req, res, next) => {
             checkOut,
             totalGuests: parseInt(totalGuests),
             bookingSource: bookingSource || 'online',
-            notes: notes || '',
+            extraExpense: extraExpense || null,
         });
+
+        // Send confirmation email (do not break booking if email fails)
+        if (result && result.bookingReference && result.guest && result.guest.email) {
+            const roomType = result.rooms && result.rooms[0] ? result.rooms[0].roomType : 'premium';
+            const roomCount = result.rooms ? result.rooms.length : roomIds.length;
+            const totalAmount = result.totalAmount || 0;
+
+            // Email failure should not affect booking response
+            sendBookingConfirmation(
+                result.guest.fullName,
+                result.guest.email,
+                result.bookingReference,
+                result.checkIn,
+                result.checkOut,
+                roomType,
+                roomCount,
+                totalAmount
+            ).catch(err => {
+                console.error('[BOOKING] Email failed but booking succeeded:', err);
+            });
+        }
 
         res.status(201).json({ success: true, data: result, message: 'Booking created successfully' });
     } catch (err) {
@@ -124,13 +172,13 @@ const getBookings = async (req, res, next) => {
 const updateBookingStatus = async (req, res, next) => {
     try {
         const bookingId = req.params.id;
-        const { bookingStatus } = req.body;
+        const { bookingStatus, extraExpense } = req.body;
 
         if (!bookingStatus) {
             return res.status(400).json({ success: false, message: 'bookingStatus is required.' });
         }
 
-        const result = await bookingService.updateBookingStatus({ bookingId, bookingStatus });
+        const result = await bookingService.updateBookingStatus({ bookingId, bookingStatus, extraExpense });
         res.status(200).json({ success: true, data: result });
     } catch (err) {
         next(err);

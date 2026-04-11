@@ -3,6 +3,7 @@
 
 const prisma = require('../config/prisma');
 const { createError } = require('../middlewares/errorHandler');
+const { generateBookingReference } = require('../utils/generateBookingReference');
 
 // ─── HELPER: Normalize payment method to match Prisma enum ───
 const normalizePaymentMethod = (method) => {
@@ -92,7 +93,7 @@ const searchAvailableRooms = async ({ checkIn, checkOut, roomType, roomCount }) 
     const bookedRoomIds = await prisma.bookingRoom.findMany({
         where: {
             booking: {
-                bookingStatus: { in: ['pending', 'confirmed'] },
+                bookingStatus: { in: ['pending', 'confirmed', 'checked_in', 'checked_out'] },
                 checkIn: { lt: coDate },
                 checkOut: { gt: ciDate },
             },
@@ -221,7 +222,7 @@ const getAvailableRooms = async ({ checkIn, checkOut, guests }) => {
     const bookedRoomIds = await prisma.bookingRoom.findMany({
         where: {
             booking: {
-                bookingStatus: { in: ['pending', 'confirmed'] },
+                bookingStatus: { in: ['pending', 'confirmed', 'checked_in', 'checked_out'] },
                 checkIn: { lt: coDate },
                 checkOut: { gt: ciDate },
             },
@@ -267,15 +268,6 @@ const getAvailableRooms = async ({ checkIn, checkOut, guests }) => {
 };
 
 // ─────────────────────────────────────────────────────────────
-// HELPER: Generate unique booking reference MH-YYYY-XXXX (no DB query)
-// ─────────────────────────────────────────────────────────────
-const generateBookingReference = async (tx) => {
-    const currentYear = new Date().getFullYear();
-    const randomNum = Math.floor(Math.random() * 9999) + 1;
-    const reference = `MH-${currentYear}-${String(randomNum).padStart(4, '0')}`;
-    return reference;
-};
-
 // ─────────────────────────────────────────────────────────────
 // SERVICE 2: Create ONLINE booking (auto room allocation + transaction)
 // POST /api/bookings/online
@@ -292,7 +284,7 @@ const createOnlineBooking = async ({
     checkOut,
     totalGuests,
     bookingSource = 'online',
-    notes = '',
+    extraExpense = null,
 }) => {
     // ── Input validation ─────────────────────────────────────
     if (!fullName || !email || !phone) {
@@ -326,6 +318,9 @@ const createOnlineBooking = async ({
         return parsed;
     });
 
+    // Generate booking reference (outside transaction)
+    const bookingReference = await generateBookingReference();
+
     // ── Transaction with row-level locking ───────────────────
     const booking = await prisma.$transaction(async (tx) => {
         // STEP 1: Lock the selected rooms using FOR UPDATE
@@ -354,7 +349,7 @@ const createOnlineBooking = async ({
             where: {
                 roomId: { in: sanitizedRoomIds },
                 booking: {
-                    bookingStatus: { in: ['pending', 'confirmed'] },
+                    bookingStatus: { in: ['pending', 'confirmed', 'checked_in', 'checked_out'] },
                     checkIn: { lt: coDate },
                     checkOut: { gt: ciDate },
                 },
@@ -365,10 +360,7 @@ const createOnlineBooking = async ({
         });
 
         if (conflictingBookings.length > 0) {
-            const conflictDetails = conflictingBookings
-                .map((c) => `Room ${c.room.roomNumber}`)
-                .join(', ');
-            throw createError(409, `${conflictDetails} ${conflictingBookings.length > 1 ? 'are' : 'is'} no longer available for the selected dates.`);
+            throw createError(409, 'Selected room is not available for the selected dates.');
         }
 
         // STEP 5: Calculate total amount
@@ -376,10 +368,7 @@ const createOnlineBooking = async ({
             return sum + parseFloat(room.price_per_night) * nights;
         }, 0);
 
-        // STEP 6: Generate booking reference
-        const bookingReference = await generateBookingReference(tx);
-
-        // STEP 7: Create Guest
+        // STEP 6: Create Guest (booking reference was generated outside transaction)
         const guest = await tx.guest.create({
             data: {
                 fullName: fullName.trim(),
@@ -405,13 +394,13 @@ const createOnlineBooking = async ({
             data: {
                 guestId: guest.id,
                 bookingReference,
-                checkIn: ci,
-                checkOut: co,
+                checkIn: ciDate,
+                checkOut: coDate,
                 totalGuests: parseInt(totalGuests),
                 bookingStatus: 'pending',
                 bookingSource,
                 totalAmount: parseFloat(totalAmount.toFixed(2)),
-                notes: notes || null,
+                extraExpense: extraExpense || null,
             },
         });
 
@@ -478,7 +467,7 @@ const createBooking = async ({
     checkOut,
     totalGuests,
     bookingSource,
-    notes,
+    extraExpense,
 }) => {
     // This endpoint is deprecated, use createOnlineBooking or createWalkinBooking instead
     throw createError(400, 'This endpoint is deprecated. Use POST /api/bookings/online or POST /api/admin/bookings/walkin');
@@ -552,7 +541,7 @@ const confirmPayment = async ({ bookingId, amount, paymentMethod, transactionId 
 // SERVICE 4b: Update booking status (new)
 // PATCH /api/bookings/:id/status
 // ─────────────────────────────────────────────────────────────
-const updateBookingStatus = async ({ bookingId, bookingStatus }) => {
+const updateBookingStatus = async ({ bookingId, bookingStatus, extraExpense }) => {
     if (!bookingId) {
         throw createError(400, 'bookingId is required.');
     }
@@ -561,7 +550,7 @@ const updateBookingStatus = async ({ bookingId, bookingStatus }) => {
         throw createError(400, 'bookingStatus is required.');
     }
 
-    const validStatuses = ['confirmed', 'checked_in', 'checked_out'];
+    const validStatuses = ['pending', 'confirmed', 'cancelled', 'checked_in', 'checked_out'];
     if (!validStatuses.includes(bookingStatus)) {
         throw createError(400, `bookingStatus must be one of: ${validStatuses.join(', ')}`);
     }
@@ -576,23 +565,58 @@ const updateBookingStatus = async ({ bookingId, bookingStatus }) => {
 
     // Check allowed transitions
     const allowedTransitions = {
-        'confirmed': ['checked_in'],
-        'checked_in': ['checked_out'],
+        'pending': ['confirmed', 'cancelled'],
+        'confirmed': ['checked_in', 'cancelled'],
+        'checked_in': ['checked_out', 'cancelled'],
+        'checked_out': ['cancelled'],
+        'cancelled': [],
     };
 
     if (!allowedTransitions[booking.bookingStatus] || !allowedTransitions[booking.bookingStatus].includes(bookingStatus)) {
-        throw createError(400, `Invalid status transition from ${booking.bookingStatus} to ${bookingStatus}. Allowed transitions: confirmed -> checked_in, checked_in -> checked_out.`);
+        throw createError(400, `Invalid status transition from ${booking.bookingStatus} to ${bookingStatus}. Allowed transitions: pending -> confirmed/cancelled, confirmed -> checked_in/cancelled, checked_in -> checked_out/cancelled, checked_out -> cancelled.`);
     }
 
-    const updated = await prisma.booking.update({
-        where: { id: parseInt(bookingId) },
-        data: { bookingStatus },
+    const updated = await prisma.$transaction(async (tx) => {
+        // Update booking status and extra expense if provided
+        const updateData = { bookingStatus };
+        if (extraExpense !== undefined) {
+            updateData.extraExpense = extraExpense;
+        }
+
+        const updatedBooking = await tx.booking.update({
+            where: { id: parseInt(bookingId) },
+            data: updateData,
+        });
+
+        // If status is being changed to cancelled, also cancel payments
+        if (bookingStatus === 'cancelled') {
+            await tx.payment.updateMany({
+                where: { bookingId: parseInt(bookingId) },
+                data: { paymentStatus: 'cancelled' },
+            });
+        }
+
+        return updatedBooking;
     });
+
+    // Calculate final total: room charges + extra expense
+    let finalTotal = parseFloat(updated.totalAmount.toString());
+    if (extraExpense && extraExpense !== 'No expense') {
+        // Parse amounts from format: "travel-₹250, food-₹300" (supports multiple expenses)
+        const amountMatches = extraExpense.match(/₹([\d.]+)/g);
+        if (amountMatches) {
+            amountMatches.forEach(match => {
+                const amount = parseFloat(match.replace('₹', ''));
+                finalTotal += amount;
+            });
+        }
+    }
 
     return {
         bookingId: updated.id,
         bookingStatus: updated.bookingStatus,
-        message: `Booking status updated to ${updated.bookingStatus}.`,
+        finalTotal: finalTotal.toFixed(2),
+        message: `Booking status updated to ${updated.bookingStatus}${bookingStatus === 'cancelled' ? ' and payment cancelled.' : ''}${extraExpense !== undefined ? ' Extra expense recorded.' : '.'}`,
     };
 };
 
@@ -652,15 +676,15 @@ const searchRoomsSimple = async ({ checkIn, checkOut, roomType }) => {
     }
 
     // Parse and validate dates
-    const { ci, co } = validateDates(checkIn, checkOut);
+    const { ci, co, ciDate, coDate } = validateDates(checkIn, checkOut);
 
     // Find booked room IDs for this date range (excluding cancelled bookings)
     const bookedRoomIds = await prisma.bookingRoom.findMany({
         where: {
             booking: {
                 bookingStatus: { in: ['pending', 'confirmed', 'checked_in', 'checked_out'] },
-                checkIn: { lt: co },
-                checkOut: { gt: ci },
+                checkIn: { lt: coDate },
+                checkOut: { gt: ciDate },
             },
         },
         select: { roomId: true },
@@ -731,27 +755,67 @@ const createOfflineBooking = async ({
     }
 
     // Parse and validate dates
-    const { ci, co } = validateDates(booking.checkIn, booking.checkOut);
+    const { ci, co, ciDate, coDate } = validateDates(booking.checkIn, booking.checkOut);
+
+    // Generate booking reference (outside transaction)
+    const bookingReference = await generateBookingReference();
 
     return await prisma.$transaction(async (tx) => {
-        // Step 1: Find or create guest
-        let guestRecord = await tx.guest.findFirst({
-            where: { phone: guest.phone },
-        });
+        // STEP 1: Lock the selected rooms using FOR UPDATE to prevent race conditions
+        const lockedRooms = await tx.$queryRawUnsafe(
+            `SELECT id, room_number, room_type, max_guests, price_per_night, status
+       FROM rooms
+       WHERE id = ANY($1::int[])
+       FOR UPDATE`,
+            booking.roomIds.map((id) => parseInt(id))
+        );
 
-        if (!guestRecord) {
-            guestRecord = await tx.guest.create({
-                data: {
-                    fullName: guest.fullName,
-                    phone: guest.phone,
-                    email: guest.email || null,
-                    address: guest.address || null,
-                    idProofType: guest.idProofType || null,
-                },
-            });
+        // STEP 2: Verify all rooms exist
+        if (lockedRooms.length !== booking.roomIds.length) {
+            throw createError(404, 'One or more selected rooms do not exist.');
         }
 
-        // Step 2: Create GuestMembers if provided
+        // STEP 3: Verify no room is under maintenance
+        const unavailableRooms = lockedRooms.filter((r) => r.status !== 'active');
+        if (unavailableRooms.length > 0) {
+            const nums = unavailableRooms.map((r) => r.room_number).join(', ');
+            throw createError(409, `Room(s) ${nums} are currently under maintenance.`);
+        }
+
+        // STEP 4: Check for conflicting bookings INSIDE transaction (no overlaps allowed)
+        const conflictingBookings = await tx.bookingRoom.findMany({
+            where: {
+                roomId: { in: booking.roomIds.map((id) => parseInt(id)) },
+                booking: {
+                    bookingStatus: { in: ['pending', 'confirmed', 'checked_in', 'checked_out'] },
+                    checkIn: { lt: coDate },
+                    checkOut: { gt: ciDate },
+                },
+            },
+            include: {
+                room: { select: { roomNumber: true } },
+            },
+        });
+
+        if (conflictingBookings.length > 0) {
+            const conflictDetails = conflictingBookings
+                .map((c) => `Room ${c.room.roomNumber}`)
+                .join(', ');
+            throw createError(409, `${conflictDetails} ${conflictingBookings.length > 1 ? 'are' : 'is'} already booked for the selected dates.`);
+        }
+
+        // STEP 5: Always create a new guest for offline bookings (don't reuse by phone)
+        const guestRecord = await tx.guest.create({
+            data: {
+                fullName: guest.fullName,
+                phone: guest.phone,
+                email: guest.email || null,
+                address: guest.address || null,
+                idProofType: guest.idProofType || null,
+            },
+        });
+
+        // STEP 6: Create GuestMembers if provided
         if (members && Array.isArray(members) && members.length > 0) {
             await tx.guestMember.createMany({
                 data: members.map((m) => ({
@@ -763,41 +827,22 @@ const createOfflineBooking = async ({
             });
         }
 
-        // Step 3: Generate unique booking reference
-        const currentYear = new Date().getFullYear();
-        const prefix = `MH-${currentYear}`;
-
-        const lastBooking = await tx.booking.findMany({
-            where: { bookingReference: { startsWith: prefix } },
-            orderBy: { bookingReference: 'desc' },
-            take: 1,
-        });
-
-        let nextNum = 1;
-        if (lastBooking.length > 0) {
-            const lastRef = lastBooking[0].bookingReference;
-            const lastNum = parseInt(lastRef.split('-')[2]);
-            if (!isNaN(lastNum)) nextNum = lastNum + 1;
-        }
-
-        const bookingReference = `${prefix}-${String(nextNum).padStart(4, '0')}`;
-
-        // Step 4: Create Booking
+        // STEP 7: Create Booking (booking reference was generated outside transaction)
         const newBooking = await tx.booking.create({
             data: {
                 guestId: guestRecord.id,
                 bookingReference,
-                checkIn: ci,
-                checkOut: co,
+                checkIn: ciDate,
+                checkOut: coDate,
                 totalGuests: parseInt(booking.totalGuests),
                 bookingStatus,
                 bookingSource: 'offline',
                 totalAmount: booking.totalAmount ? parseFloat(booking.totalAmount) : 0,
-                notes: booking.notes || null,
+                extraExpense: booking.extraExpense || null,
             },
         });
 
-        // Step 5: Create BookingRoom entries
+        // STEP 8: Create BookingRoom entries
         await tx.bookingRoom.createMany({
             data: booking.roomIds.map((roomId) => ({
                 bookingId: newBooking.id,
@@ -805,7 +850,7 @@ const createOfflineBooking = async ({
             })),
         });
 
-        // Step 6: Create Payment
+        // STEP 9: Create Payment
         const paymentRecord = await tx.payment.create({
             data: {
                 bookingId: newBooking.id,
@@ -844,7 +889,7 @@ const createOfflineBooking = async ({
             bookingStatus: fullBooking.bookingStatus,
             bookingSource: fullBooking.bookingSource,
             totalAmount: parseFloat(fullBooking.totalAmount),
-            notes: fullBooking.notes,
+            extraExpense: fullBooking.extraExpense,
             createdAt: fullBooking.createdAt,
             guest: {
                 id: fullBooking.guest.id,
@@ -900,10 +945,11 @@ const getBookings = async ({ status, source, date, checkOutDate }) => {
             throw createError(400, 'Date must be in YYYY-MM-DD format.');
         }
         const startDate = new Date(date + 'T00:00:00Z');
-        const endDate = new Date(date + 'T23:59:59Z');
+        const endDate = new Date(date + 'T00:00:00Z');
+        endDate.setDate(endDate.getDate() + 1);
         where.checkIn = {
             gte: startDate,
-            lte: endDate,
+            lt: endDate,
         };
     }
 
@@ -914,10 +960,11 @@ const getBookings = async ({ status, source, date, checkOutDate }) => {
             throw createError(400, 'checkOutDate must be in YYYY-MM-DD format.');
         }
         const startDate = new Date(checkOutDate + 'T00:00:00Z');
-        const endDate = new Date(checkOutDate + 'T23:59:59Z');
+        const endDate = new Date(checkOutDate + 'T00:00:00Z');
+        endDate.setDate(endDate.getDate() + 1);
         where.checkOut = {
             gte: startDate,
-            lte: endDate,
+            lt: endDate,
         };
     }
 
