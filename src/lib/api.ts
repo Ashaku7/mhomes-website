@@ -1,9 +1,12 @@
 // src/lib/api.ts
-// Axios API client — connects Next.js frontend to Express backend on port 5000.
+// Axios API client for Next.js frontend to call API routes
 
 import axios from 'axios';
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+// Use relative paths for API calls (works on same domain)
+// In development: http://localhost:3000/api/...
+// In production: https://yourdomain.com/api/...
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || '/api';
 
 // ─── Cookie Helpers ──────────────────────────────────────────────────────────
 
@@ -155,8 +158,86 @@ export const bookingsApi = {
     }),
 };
 
-// ─── ADMIN ───────────────────────────────────────────────────────────────────
+// ─── ADMIN API ───────────────────────────────────────────────────────────────
+// Helper function to make admin API calls with Clerk token
 
+export const createAdminApi = (clerkToken: string | null) => {
+  if (!clerkToken) {
+    return null;
+  }
+
+  // Create a dedicated axios instance for admin routes with Clerk token
+  const adminInstance = axios.create({
+    baseURL: BASE_URL,
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${clerkToken}`
+    },
+    timeout: 10000,
+  });
+
+  return {
+    getDashboard: () =>
+      adminInstance.get('/api/admin/dashboard'),
+
+    getAllBookings: (filters?: BookingFilters) =>
+      adminInstance.get('/api/admin/bookings', { params: filters }),
+
+    getBookingById: (id: number) =>
+      adminInstance.get(`/api/admin/bookings/${id}`),
+
+    updateBookingStatus: (id: number, bookingStatus: string, extraExpense?: string) =>
+      adminInstance.patch(`/api/admin/bookings/${id}`, { bookingStatus, extraExpense }),
+
+    cancelBooking: (id: number, reason?: string) =>
+      adminInstance.patch(`/api/admin/bookings/${id}/cancel`, { reason }),
+
+    getAllRooms: () =>
+      adminInstance.get('/api/admin/rooms'),
+
+    updateRoom: (id: number, data: UpdateRoomData) =>
+      adminInstance.patch(`/api/admin/rooms/${id}`, data),
+
+    getTodayActivity: () =>
+      adminInstance.get('/api/admin/bookings/today'),
+
+    searchPayments: (filters?: any) =>
+      adminInstance.get('/api/admin/payments/search', { params: filters }),
+
+    getTodayRevenue: () =>
+      adminInstance.get('/api/admin/payments/today-revenue'),
+
+    updatePayment: (id: number, data: any) =>
+      adminInstance.patch(`/api/admin/payments/${id}`, data),
+
+    cancelPayment: (id: number, reason?: string) =>
+      adminInstance.patch(`/api/admin/payments/${id}/cancel`, { reason }),
+
+    createWalkinBooking: (data: any) =>
+      adminInstance.post('/api/admin/bookings/walkin', data),
+
+    getCheckInRoomOptions: (bookingId: number) =>
+      adminInstance.get(`/api/admin/bookings/${bookingId}/checkin-rooms`),
+
+    checkInGuest: (bookingId: number, data: any) =>
+      adminInstance.patch(`/api/admin/bookings/${bookingId}/checkin`, data),
+
+    confirmPaymentByAdmin: (bookingId: number, data: any) =>
+      adminInstance.patch(`/api/admin/bookings/${bookingId}/confirm-payment`, data),
+
+    createInvoice: (bookingId: number, totalAmount: number) =>
+      adminInstance.post('/api/admin/invoices', { bookingId, totalAmount }),
+
+    getInvoiceByBookingId: (bookingId: number) =>
+      adminInstance.get(`/api/admin/invoices/${bookingId}`),
+
+    getInvoiceByNumber: (invoiceNumber: string) =>
+      adminInstance.get(`/api/admin/invoices/number/${invoiceNumber}`),
+  };
+};
+
+// Legacy adminApi - kept for backward compatibility
+// DEPRECATED: Use createAdminApi(clerkToken) instead for protected routes
 export const adminApi = {
   getDashboard: () =>
     api.get('/api/admin/dashboard'),

@@ -3,13 +3,14 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
-import { SignOutButton, useUser } from '@clerk/nextjs'
-import { adminApi, bookingsApi } from '@/lib/api'
+import { SignOutButton, useUser, useAuth } from '@clerk/nextjs'
+import { adminApi, bookingsApi, createAdminApi } from '@/lib/api'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent } from '@/components/ui/card'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
+import InvoicePrintView from '@/components/InvoicePrintView'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Checkbox } from '@/components/ui/checkbox'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
@@ -135,6 +136,43 @@ const isRefundAllowed = (checkInDate?: string) => {
   return today < threshold
 }
 
+const isPaymentRefundAllowed = (checkInDate?: string, bookingStatus?: string) => {
+  // Refund not allowed for these statuses
+  if (bookingStatus === 'pending' || bookingStatus === 'checked_in' || bookingStatus === 'checked_out') {
+    return false
+  }
+
+  if (!checkInDate) return false
+  const checkIn = new Date(checkInDate)
+  if (Number.isNaN(checkIn.getTime())) return false
+
+  checkIn.setHours(0, 0, 0, 0)
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+
+  // Allow refund only if check-in is at least 2 days in the future
+  const twoDaysLater = new Date(today)
+  twoDaysLater.setDate(twoDaysLater.getDate() + 2)
+
+  return checkIn >= twoDaysLater
+}
+
+const isEditPaymentAllowed = (checkInDate?: string, bookingStatus?: string) => {
+  if (!checkInDate || bookingStatus === 'checked_out') return false
+  const checkIn = new Date(checkInDate)
+  if (Number.isNaN(checkIn.getTime())) return false
+
+  checkIn.setHours(0, 0, 0, 0)
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+
+  // Allow editing only if check-in is at least 2 days in the future
+  const twoDaysLater = new Date(today)
+  twoDaysLater.setDate(twoDaysLater.getDate() + 2)
+
+  return checkIn >= twoDaysLater
+}
+
 const TAB_CONFIG = [
   { id: 'dashboard', label: 'Dashboard', Icon: LayoutDashboard },
   { id: 'payments', label: 'Payments', Icon: CreditCard },
@@ -223,6 +261,7 @@ function TodayCard({ booking: b }: { booking: Booking }) {
 export default function AdminPage() {
   const router = useRouter()
   const { user } = useUser()
+  const { getToken } = useAuth()
   const [activeTab, setActiveTab] = useState('dashboard')
   const [isVerifyingAdmin, setIsVerifyingAdmin] = useState(true)
   const [isAdminAuthorized, setIsAdminAuthorized] = useState(false)
@@ -284,6 +323,7 @@ export default function AdminPage() {
   const [rooms, setRooms] = useState<Room[]>([])
   const [roomsLoading, setRoomsLoading] = useState(false)
   const [roomsError, setRoomsError] = useState<string | null>(null)
+  const [refreshLoading, setRefreshLoading] = useState(false)
   const [editingRoom, setEditingRoom] = useState<number | null>(null)
   const [editForm, setEditForm] = useState<Partial<Room>>({})
   const [editLoading, setEditLoading] = useState(false)
@@ -334,7 +374,7 @@ export default function AdminPage() {
 
   // Payment edit dialog state
   const [editPaymentId, setEditPaymentId] = useState<number | null>(null)
-  const [editPaymentStatus, setEditPaymentStatus] = useState('yet_to_pay')
+  const [editPaymentStatus, setEditPaymentStatus] = useState('paid')
   const [editPaymentMethod, setEditPaymentMethod] = useState('cash')
   const [editPaymentTxnId, setEditPaymentTxnId] = useState('')
   const [editPaymentDate, setEditPaymentDate] = useState('')
@@ -360,50 +400,91 @@ export default function AdminPage() {
   // ── Data fetching ──────────────────────────────────────────────────────────
 
   useEffect(() => {
-    const email = user?.emailAddresses?.[0]?.emailAddress
-    if (!email) return
-
     const verifyAdmin = async () => {
       setIsVerifyingAdmin(true)
       try {
-        const res = await fetch('http://localhost:5000/api/auth/verify-admin', {
+        // Get Clerk session token
+        const token = await getToken()
+        
+        if (!token) {
+          setIsAdminAuthorized(false)
+          setIsVerifyingAdmin(false)
+          return
+        }
+
+        // Call verify-admin with Clerk token
+        const res = await fetch('/api/auth/verify-admin', {
           method: 'GET',
-          headers: { 'x-user-email': email },
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
         })
+
         if (res.status === 200) {
           setIsAdminAuthorized(true)
           return
         }
-        if (res.status === 403) {
+
+        if (res.status === 403 || res.status === 401) {
           setIsAdminAuthorized(false)
           return
         }
+
         setIsAdminAuthorized(false)
-      } catch {
+      } catch (error) {
+        console.error('Admin verification error:', error)
         setIsAdminAuthorized(false)
       } finally {
         setIsVerifyingAdmin(false)
       }
     }
 
-    verifyAdmin()
-  }, [user])
+    // Only verify if user is loaded
+    if (user) {
+      verifyAdmin()
+    }
+  }, [user, getToken])
 
   const fetchDashboard = useCallback(async () => {
     setDashLoading(true); setDashError(null)
     try {
+      // Get Clerk token for admin API calls
+      const token = await getToken()
+      if (!token) {
+        setDashError('Authentication failed. Please log in again.')
+        setDashLoading(false)
+        return
+      }
+
+      // Create admin API client with Clerk token
+      const authenticatedAdminApi = createAdminApi(token)
+      if (!authenticatedAdminApi) {
+        setDashError('Failed to create authenticated API client.')
+        setDashLoading(false)
+        return
+      }
+
+      // Make API calls with authentication
       const [dashRes, revenueRes, bookingsRes] = await Promise.all([
-        adminApi.getDashboard(),
-        fetch('http://localhost:5000/api/admin/payments/today-revenue').then(r => r.json()),
-        fetch('http://localhost:5000/api/admin/bookings?limit=10').then(r => r.json())
+        authenticatedAdminApi.getDashboard(),
+        fetch('/api/admin/payments/today-revenue', {
+          headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
+        }).then(r => r.json()),
+        fetch('/api/admin/bookings?limit=10', {
+          headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
+        }).then(r => r.json())
       ])
+
       const dashData = dashRes.data.data
       dashData.todayRevenue = revenueRes.revenue || 0
       dashData.recentBookings = bookingsRes.data?.bookings || bookingsRes.data || []
       setDashboard(dashData)
-    } catch (e: any) { setDashError(e?.response?.data?.message || 'Failed to load dashboard.') }
+    } catch (e: any) { 
+      setDashError(e?.response?.data?.message || 'Failed to load dashboard.') 
+    }
     finally { setDashLoading(false) }
-  }, [])
+  }, [getToken])
 
   const fetchBookings = useCallback(async () => {
     setBookLoading(true); setBookError(null)
@@ -418,7 +499,7 @@ export default function AdminPage() {
         params.append('date', `${year}-${month}-${day}`)
       }
 
-      const res = await fetch(`http://localhost:5000/api/bookings?${params}`, {
+      const res = await fetch(`/api/bookings?${params}`, {
         method: 'GET',
         headers: { 'Content-Type': 'application/json' },
       })
@@ -434,8 +515,8 @@ export default function AdminPage() {
     try {
       const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
       const [checkinsRes, checkoutsRes] = await Promise.all([
-        fetch(`http://localhost:5000/api/bookings?date=${today}&status=confirmed`),
-        fetch(`http://localhost:5000/api/bookings?checkOutDate=${today}&status=checked_in`)
+        fetch(`/api/bookings?date=${today}&status=confirmed`),
+        fetch(`/api/bookings?checkOutDate=${today}&status=checked_in`)
       ])
       const checkinsData = await checkinsRes.json()
       const checkoutsData = await checkoutsRes.json()
@@ -451,20 +532,51 @@ export default function AdminPage() {
   const fetchRooms = useCallback(async () => {
     setRoomsLoading(true); setRoomsError(null)
     try {
-      const res = await adminApi.getAllRooms()
+      const token = await getToken()
+      if (!token) {
+        setRoomsError('Authentication failed. Please log in again.')
+        setRoomsLoading(false)
+        return
+      }
+
+      const authenticatedAdminApi = createAdminApi(token)
+      if (!authenticatedAdminApi) {
+        setRoomsError('Failed to create authenticated API client.')
+        setRoomsLoading(false)
+        return
+      }
+
+      const res = await authenticatedAdminApi.getAllRooms()
       setRooms(res.data.data?.rooms || res.data.data || [])
     } catch (e: any) { setRoomsError(e?.response?.data?.message || 'Failed to load rooms.') }
     finally { setRoomsLoading(false) }
-  }, [])
+  }, [getToken])
 
   // ── Fetch rooms with occupancy status for dashboard ───────────────────────
   const fetchDashboardRooms = useCallback(async () => {
     setRoomsLoading(true); setRoomsError(null)
     try {
+      const token = await getToken()
+      if (!token) {
+        setRoomsError('Authentication failed. Please log in again.')
+        setRoomsLoading(false)
+        return
+      }
+
+      // Create admin API client with Clerk token
+      const authenticatedAdminApi = createAdminApi(token)
+      if (!authenticatedAdminApi) {
+        setRoomsError('Failed to create authenticated API client.')
+        setRoomsLoading(false)
+        return
+      }
+
       // Fetch all rooms and all bookings (not just checked_in)
       const [roomsRes, bookingsRes] = await Promise.all([
-        adminApi.getAllRooms(),
-        fetch('http://localhost:5000/api/admin/bookings').then(r => r.json())
+        authenticatedAdminApi.getAllRooms(),
+        fetch('/api/admin/bookings', {
+          headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
+        }).then(r => r.json())
       ])
 
       const allRooms = roomsRes.data.data?.rooms || roomsRes.data.data || []
@@ -512,7 +624,7 @@ export default function AdminPage() {
       setRoomsError(e?.response?.data?.message || 'Failed to load rooms.') 
     }
     finally { setRoomsLoading(false) }
-  }, [])
+  }, [getToken])
 
   useEffect(() => { if (activeTab === 'dashboard') fetchDashboard() }, [activeTab, fetchDashboard])
   useEffect(() => { if (activeTab === 'bookings') fetchBookings() }, [activeTab, fetchBookings])
@@ -527,6 +639,27 @@ export default function AdminPage() {
     return () => clearInterval(interval)
   }, [activeTab, fetchDashboardRooms])
 
+  // ── Refresh Dashboard Handler ───────────────────────────────────────────
+  // ── Fetch pending bookings (Dashboard tab) ────────────────────────────────
+  const fetchPendingBookings = useCallback(async () => {
+    setPendingLoading(true); setPendingError(null)
+    try {
+      const res = await fetch('/api/bookings/pending')
+      const data = await res.json()
+      setPendingBookings(data.data?.bookings || data.data || [])
+    } catch (e: any) { setPendingError('Failed to load pending bookings.') }
+    finally { setPendingLoading(false) }
+  }, [])
+
+  const handleRefresh = useCallback(async () => {
+    setRefreshLoading(true)
+    try {
+      await Promise.all([fetchDashboard(), fetchDashboardRooms(), fetchPendingBookings()])
+    } finally {
+      setRefreshLoading(false)
+    }
+  }, [fetchDashboard, fetchDashboardRooms, fetchPendingBookings])
+
   // Auto-refresh check-in/check-out tab every 60 seconds
   useEffect(() => {
     if (activeTab !== 'checkinout') return
@@ -534,18 +667,15 @@ export default function AdminPage() {
     return () => clearInterval(interval)
   }, [activeTab, fetchToday])
 
-  // ── Fetch pending bookings (Dashboard tab) ────────────────────────────────
-  const fetchPendingBookings = useCallback(async () => {
-    setPendingLoading(true); setPendingError(null)
-    try {
-      const res = await fetch('http://localhost:5000/api/bookings/pending')
-      const data = await res.json()
-      setPendingBookings(data.data?.bookings || data.data || [])
-    } catch (e: any) { setPendingError('Failed to load pending bookings.') }
-    finally { setPendingLoading(false) }
-  }, [])
-
   useEffect(() => { if (activeTab === 'dashboard') fetchPendingBookings() }, [activeTab, fetchPendingBookings])
+
+  // ── Auto-refresh pending bookings every 30 minutes ─────────────────────────
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchPendingBookings()
+    }, 30 * 60 * 1000) // Poll every 30 minutes
+    return () => clearInterval(interval)
+  }, [fetchPendingBookings])
 
   // ── Payment & Booking Handlers ─────────────────────────────────────────────
 
@@ -572,7 +702,7 @@ export default function AdminPage() {
 
   const handleStatusUpdate = async (bookingId: number, newStatus: 'checked_in' | 'checked_out') => {
     try {
-      const res = await fetch(`http://localhost:5000/api/bookings/${bookingId}/status`, {
+      const res = await fetch(`/api/bookings/${bookingId}/status`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ bookingStatus: newStatus }),
@@ -595,85 +725,88 @@ export default function AdminPage() {
   const [pendingCancellingId, setPendingCancellingId] = useState<number | null>(null)
 
   const handleCancelPendingBooking = async (bookingId: number) => {
-    try {
-      const confirmed = window.confirm('Are you sure you want to cancel this reservation?')
-      if (!confirmed) return
+    // Open confirmation modal instead of using window.confirm
+    setCancelId(bookingId)
+  }
 
+  const confirmCancelBooking = async () => {
+    if (!cancelId) return
+    try {
       setGeneralError(null)
       setPendingCancelError(null)
-      setPendingCancellingId(bookingId)
+      setCancelLoading(true)
+      setPendingCancellingId(cancelId)
 
-      const res = await fetch(`http://localhost:5000/api/bookings/${bookingId}/status`, {
+      const res = await fetch(`/api/bookings/${cancelId}/status`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ bookingStatus: 'cancelled' }),
       })
 
-      const data = await res?.json?.()
-      if (!res?.ok) throw new Error(data?.message || 'Failed to cancel booking')
+      const data = await res.json()
+      if (!res.ok) throw new Error(data?.message || 'Failed to cancel booking')
 
-      try {
-        setSuccessMsg(`Booking #${bookingId} cancelled.`)
-        setTimeout(() => setSuccessMsg(null), 4000)
-      } catch (e) {
-        console.error('Error setting success message:', e)
-      }
+      setSuccessMsg(`Booking #${cancelId} cancelled.`)
+      setTimeout(() => setSuccessMsg(null), 4000)
+      setCancelId(null)
+      setCancelReason('')
 
-      try {
-        setPendingBookings(prev => {
-          if (!Array.isArray(prev)) return prev
-          return prev.filter(b => b?.id !== bookingId)
-        })
-      } catch (e) {
-        console.error('Error updating pending bookings:', e)
-      }
+      setPendingBookings(prev => {
+        if (!Array.isArray(prev)) return prev
+        return prev.filter(b => b?.id !== cancelId)
+      })
 
-      try {
-        await fetchPendingBookings()
-        await Promise.all([fetchBookings(), fetchDashboard()])
-      } catch (e) {
-        console.error('Error refreshing data:', e)
-      }
+      await Promise.all([fetchPendingBookings(), fetchBookings(), fetchDashboard()])
     } catch (e: any) {
       const errorMsg = e?.message || 'Failed to cancel booking.'
-      try {
-        setPendingCancelError(errorMsg)
-        setGeneralError(null)
-      } catch (err) {
-        console.error('Error setting error state:', err)
-        setGeneralError('Something went wrong. Please refresh the page.')
-      }
+      setPendingCancelError(errorMsg)
     } finally {
-      try {
-        setPendingCancellingId(null)
-      } catch (e) {
-        console.error('Error clearing cancelling id:', e)
-      }
+      setCancelLoading(false)
+      setPendingCancellingId(null)
     }
   }
+
+  // ── Check-in Modal Handler ────────────────────────────────────────────────
 
   const fetchCheckInRoomOptions = async (booking: Booking) => {
     setCheckInRoomsLoading(true)
     setCheckInError(null)
     try {
-      const res = await fetch(`http://localhost:5000/api/admin/bookings/${booking.id}/checkin-rooms`, {
-        method: 'GET',
-        headers: { 'Content-Type': 'application/json' },
-      })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.message || 'Failed to load room options.')
+      console.log(`[Frontend] 🔍 Fetching room options for booking ${booking.id}`)
+      
+      const token = await getToken()
+      if (!token) {
+        throw new Error('Authentication failed. Please log in again.')
+      }
 
-      const availableRooms: CheckInRoomOption[] = data.data?.availableRooms || []
-      const currentRoomIds: number[] = data.data?.currentRoomIds || booking.rooms.map(r => r.id)
+      const authenticatedAdminApi = createAdminApi(token)
+      if (!authenticatedAdminApi) {
+        throw new Error('Failed to create authenticated API client.')
+      }
+
+      console.log(`[Frontend] 🚀 Calling checkInRoomOptions API...`)
+      const res = await authenticatedAdminApi.getCheckInRoomOptions(booking.id)
+      console.log(`[Frontend] 📦 API Response:`, res.data)
+
+      const availableRooms: CheckInRoomOption[] = res.data?.data?.availableRooms || []
+      const currentRoomIds: number[] = res.data?.data?.currentRoomIds || booking.rooms.map(r => r.id)
+
+      console.log(`[Frontend] 📊 Available rooms: ${availableRooms.length}, Current room IDs: ${currentRoomIds.join(', ')}`)
+
+      if (availableRooms.length === 0) {
+        console.warn(`[Frontend] ⚠️ No rooms available for this date range`)
+        setCheckInError('No rooms available for the selected date range. Please check with the manager.')
+      }
 
       setCheckInRoomOptions(availableRooms)
       setCheckInRoomIds(currentRoomIds)
-      // Clear error on successful load
       setCheckInError(null)
     } catch (e: any) {
+      console.error(`[Frontend] ❌ Error fetching rooms:`, e)
       setCheckInRoomOptions([])
       setCheckInRoomIds(booking.rooms.map(r => r.id))
-      setCheckInError(e?.message || 'Failed to load room options.')
+      const errorMsg = e?.response?.data?.message || e?.message || 'Failed to load room options.'
+      setCheckInError(errorMsg)
     } finally {
       setCheckInRoomsLoading(false)
     }
@@ -757,34 +890,77 @@ export default function AdminPage() {
         return
       }
 
-      // Build extraExpense string
+      // Build extraExpense string (WITHOUT rupee symbol for backend parsing)
       let extraExpense = ''
       if (selectedExpenses.length > 0) {
         const expenseStrings = selectedExpenses.map(exp => {
           const expenseName = exp === 'others' ? checkOutOthersDescription : exp
           const amount = checkOutExpenses[exp]
-          return `${expenseName}-₹${amount}`
+          return `${expenseName}-${amount}`  // NO rupee symbol!
         })
         extraExpense = expenseStrings.join(', ')
       } else {
         extraExpense = 'No expense'
       }
 
-      const res = await fetch(`http://localhost:5000/api/bookings/${checkOutModal.id}/status`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          bookingStatus: 'checked_out',
-          extraExpense
-        }),
-      })
+      // ✅ Use authenticated admin API for checkout (triggers invoice creation)
+      const token = await getToken()
+      if (!token) {
+        throw new Error('Authentication failed. Please log in again.')
+      }
 
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.message || 'Failed to check out guest')
+      const authenticatedAdminApi = createAdminApi(token)
+      if (!authenticatedAdminApi) {
+        throw new Error('Failed to create authenticated API client.')
+      }
+
+      console.log(`[Checkout] 🔍 Checking out booking ${checkOutModal.id}...`)
+      const res = await authenticatedAdminApi.updateBookingStatus(checkOutModal.id, 'checked_out', extraExpense)
+      const data = res.data
+
+      console.log(`[Checkout] ✅ Checkout successful, booking status: ${data.data?.bookingStatus}`)
+
+      // Fetch full booking details with payments included
+      const bookingRes = await fetch(`/api/bookings/${checkOutModal.id}`)
+      const bookingData = await bookingRes.json()
+      let fullBooking = bookingData.data || checkOutModal
+
+      // Fetch payments separately using multiple strategies
+      let paymentsData = fullBooking.payments || []
+      
+      // Strategy 1: Try payments endpoint with bookingId
+      if (!paymentsData || paymentsData.length === 0) {
+        try {
+          const paymentRes = await fetch(`/api/payments?bookingId=${checkOutModal.id}`)
+          const paymentDataRes = await paymentRes.json()
+          if (paymentRes.ok && paymentDataRes.data) {
+            paymentsData = Array.isArray(paymentDataRes.data) ? paymentDataRes.data : [paymentDataRes.data]
+            console.log('Payments from endpoint:', paymentsData)
+          }
+        } catch (e) {
+          console.log('Strategy 1 failed:', e)
+        }
+      }
+
+      // Strategy 2: Try direct API call to get booking with payments populated
+      if (!paymentsData || paymentsData.length === 0) {
+        try {
+          const detailedRes = await fetch(`/api/bookings/${checkOutModal.id}?include=payments`)
+          const detailedData = await detailedRes.json()
+          if (detailedRes.ok && detailedData.data?.payments) {
+            paymentsData = Array.isArray(detailedData.data.payments) ? detailedData.data.payments : [detailedData.data.payments]
+            console.log('Payments from detailed booking:', paymentsData)
+          }
+        } catch (e) {
+          console.log('Strategy 2 failed:', e)
+        }
+      }
+
+      fullBooking.payments = paymentsData
 
       // Show bill modal instead of closing
       setBillModal({
-        booking: { ...checkOutModal, bookingStatus: 'checked_out' },
+        booking: { ...fullBooking, bookingStatus: 'checked_out' },
         extraExpense: extraExpense !== 'No expense' ? extraExpense : null,
         finalTotal: data.data.finalTotal
       })
@@ -824,27 +1000,24 @@ export default function AdminPage() {
     }, 30000) // 30 second timeout
 
     try {
-      const res = await fetch(`http://localhost:5000/api/admin/bookings/${checkInModal.id}/checkin`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          totalGuests: parseInt(checkInTotalGuests),
-          proofType: checkInProofType,
-          address: checkInAddress || null,
-          roomIds: checkInRoomIds,
-        }),
+      const token = await getToken()
+      if (!token) {
+        throw new Error('Authentication failed. Please log in again.')
+      }
+
+      const authenticatedAdminApi = createAdminApi(token)
+      if (!authenticatedAdminApi) {
+        throw new Error('Failed to create authenticated API client.')
+      }
+
+      const data = await authenticatedAdminApi.checkInGuest(checkInModal.id, {
+        totalGuests: parseInt(checkInTotalGuests),
+        proofType: checkInProofType,
+        address: checkInAddress || null,
+        roomIds: checkInRoomIds,
       })
 
       clearTimeout(timeoutId)
-
-      const data = await res.json()
-      
-      if (!res.ok) {
-        if (res.status === 429) {
-          throw new Error('Too many requests. Please wait a moment and try again.')
-        }
-        throw new Error(data.message || 'Failed to check in guest')
-      }
 
       setSuccessMsg(`Booking #${checkInModal.id} checked in successfully!`)
       setTimeout(() => setSuccessMsg(null), 4000)
@@ -857,7 +1030,7 @@ export default function AdminPage() {
       // Refresh all relevant data
       await Promise.all([fetchToday(), fetchBookings(), fetchPendingBookings(), fetchDashboard()])
     } catch (e: any) {
-      setCheckInError(e?.message || 'Failed to check in guest.')
+      setCheckInError(e?.response?.data?.message || e?.message || 'Failed to check in guest.')
     } finally {
       clearTimeout(timeoutId)
       checkInSubmitRef.current = false
@@ -875,11 +1048,19 @@ export default function AdminPage() {
     setPaymentSearchLoading(true)
     setPaymentSearchError(null)
     try {
+      const token = await getToken()
+      if (!token) {
+        setPaymentSearchError('Authentication failed. Please log in again.')
+        setPaymentSearchLoading(false)
+        return
+      }
+      const params = new URLSearchParams()
+      if (paymentSearchRef) params.append('bookingReference', paymentSearchRef)
+      if (paymentSearchName) params.append('guestName', paymentSearchName)
+      if (paymentSearchPhone) params.append('phone', paymentSearchPhone)
       const res = await fetch(
-        `http://localhost:5000/api/admin/payments/search?${paymentSearchRef ? `bookingReference=${paymentSearchRef}&` : ''
-        }${paymentSearchName ? `guestName=${paymentSearchName}&` : ''}${paymentSearchPhone ? `phone=${paymentSearchPhone}` : ''
-        }`,
-        { method: 'GET', headers: { 'Content-Type': 'application/json' } }
+        `/api/admin/payments/search?${params}`,
+        { method: 'GET', headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' } }
       )
       const data = await res.json()
       if (!res.ok) throw new Error(data.message || 'Search failed')
@@ -903,11 +1084,17 @@ export default function AdminPage() {
     setEditPaymentLoading(true)
     setEditPaymentError(null)
     try {
-      const res = await fetch(`http://localhost:5000/api/admin/payments/${editPaymentId}`, {
+      const token = await getToken()
+      if (!token) {
+        setEditPaymentError('Authentication failed. Please log in again.')
+        setEditPaymentLoading(false)
+        return
+      }
+      const res = await fetch(`/api/admin/payments/${editPaymentId}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          status: editPaymentStatus,
+          status: 'paid',  // Always change to 'paid' when confirming
           paymentMethod: editPaymentMethod,
           transactionId: editPaymentTxnId || null,
           paymentDate: editPaymentDate || null,
@@ -928,18 +1115,24 @@ export default function AdminPage() {
     if (!cancelPaymentId) return
     setCancelPaymentLoading(true)
     try {
-      const res = await fetch(`http://localhost:5000/api/admin/payments/${cancelPaymentId}/cancel`, {
+      const token = await getToken()
+      if (!token) {
+        setPaymentSearchError('Authentication failed. Please log in again.')
+        setCancelPaymentLoading(false)
+        return
+      }
+      const res = await fetch(`/api/admin/payments/${cancelPaymentId}/cancel`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
       })
       const data = await res.json()
-      if (!res.ok) throw new Error(data.message || 'Failed to cancel payment')
-      setSuccessMsg('Payment cancelled and booking refunded!')
+      if (!res.ok) throw new Error(data.message || 'Failed to refund payment')
+      setSuccessMsg('Payment refunded! Booking cancelled and rooms freed.')
       setTimeout(() => setSuccessMsg(null), 4000)
       setCancelPaymentId(null)
       handleSearchPayments() // Refresh results
     } catch (e: any) {
-      setPaymentSearchError(e?.message || 'Failed to cancel payment.')
+      setPaymentSearchError(e?.message || 'Failed to refund payment.')
     } finally { setCancelPaymentLoading(false) }
   }
 
@@ -966,7 +1159,7 @@ export default function AdminPage() {
         checkOut: searchCheckOut,
         ...(searchRoomType !== 'all' && { roomType: searchRoomType }),
       })
-      const res = await fetch(`http://localhost:5000/api/rooms/search-simple?${params}`, {
+      const res = await fetch(`/api/rooms/search-simple?${params}`, {
         method: 'GET',
         headers: { 'Content-Type': 'application/json' },
       })
@@ -1035,7 +1228,7 @@ export default function AdminPage() {
     setBookingError(null)
     try {
       const roomIds = Array.from(selectedRoomIds)
-      const res = await fetch('http://localhost:5000/api/bookings/offline', {
+      const res = await fetch('/api/bookings/offline', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -1092,7 +1285,21 @@ export default function AdminPage() {
   const handleSaveRoom = async (id: number) => {
     setEditLoading(true)
     try {
-      await adminApi.updateRoom(id, editForm)
+      const token = await getToken()
+      if (!token) {
+        setRoomsError('Authentication failed. Please log in again.')
+        setEditLoading(false)
+        return
+      }
+
+      const authenticatedAdminApi = createAdminApi(token)
+      if (!authenticatedAdminApi) {
+        setRoomsError('Failed to create authenticated API client.')
+        setEditLoading(false)
+        return
+      }
+
+      await authenticatedAdminApi.updateRoom(id, editForm)
       setEditingRoom(null)
       fetchRooms()
     } catch (e: any) { setRoomsError(e?.response?.data?.message || 'Failed to update room.') }
@@ -1641,8 +1848,38 @@ export default function AdminPage() {
               {/* ─── TAB: DASHBOARD ──────────────────────────────────── */}
               {activeTab === 'dashboard' && dashboard && (
                 <div>
-                  {/* Dashboard Title */}
-                  <h1 style={{ fontSize: '32px', fontWeight: '700', color: '#3E3E3E', marginBottom: '32px', letterSpacing: '-0.5px' }}>Dashboard</h1>
+                  {/* Dashboard Title with Refresh Button */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px' }}>
+                    <h1 style={{ fontSize: '32px', fontWeight: '700', color: '#3E3E3E', letterSpacing: '-0.5px', margin: 0 }}>Dashboard</h1>
+                    <button
+                      onClick={handleRefresh}
+                      disabled={refreshLoading}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        backgroundColor: '#C9A84C',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '8px',
+                        padding: '10px 16px',
+                        fontSize: '14px',
+                        fontWeight: '500',
+                        cursor: refreshLoading ? 'not-allowed' : 'pointer',
+                        opacity: refreshLoading ? 0.7 : 1,
+                        transition: 'all 0.3s ease'
+                      }}
+                      onMouseEnter={(e: any) => {
+                        if (!refreshLoading) e.currentTarget.style.backgroundColor = '#B8942B'
+                      }}
+                      onMouseLeave={(e: any) => {
+                        if (!refreshLoading) e.currentTarget.style.backgroundColor = '#C9A84C'
+                      }}
+                    >
+                      <RefreshCw className={`w-4 h-4 ${refreshLoading ? 'animate-spin' : ''}`} />
+                      {refreshLoading ? 'Refreshing...' : 'Refresh'}
+                    </button>
+                  </div>
 
                   {/* Room Availability Grid */}
                   <div style={{ position: 'relative', marginBottom: '32px' }}>
@@ -1959,22 +2196,15 @@ export default function AdminPage() {
                                 </td>
                                 <td style={{ padding: '12px 16px', textAlign: 'center' }}>
                                   <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', alignItems: 'center' }}>
-                                    <Button
-                                      onClick={() => handleEditPayment(p)}
-                                      size="sm"
-                                      variant="ghost"
-                                      style={{ color: '#8B7355', height: '28px', padding: '0 8px' }}
-                                    >
-                                      <Pencil className="w-3.5 h-3.5" />
-                                    </Button>
-                                    {refundAllowed && p.paymentStatus !== 'refunded' && p.booking?.bookingStatus !== 'checked_in' && p.booking?.bookingStatus !== 'checked_out' ? (
+                                    {p.paymentStatus === 'paid' && isPaymentRefundAllowed(p.booking?.checkIn, p.booking?.bookingStatus) ? (
                                       <Button
                                         onClick={() => setCancelPaymentId(p.id)}
                                         size="sm"
                                         variant="ghost"
-                                        style={{ color: '#9B6B5F', height: '28px', padding: '0 8px' }}
+                                        style={{ color: '#8B7355', height: '28px', padding: '0 8px' }}
+                                        title="Refund this payment"
                                       >
-                                        <Trash2 className="w-3.5 h-3.5" />
+                                        <Pencil className="w-3.5 h-3.5" />
                                       </Button>
                                     ) : (
                                       <span style={{ fontSize: '11px', color: '#A89B8B' }}>—</span>
@@ -2114,19 +2344,13 @@ export default function AdminPage() {
                             <th style={{padding: '14px 16px', textAlign: 'left', color: '#3E3E3E', fontWeight: 600}}>Check-in</th>
                             <th style={{padding: '14px 16px', textAlign: 'left', color: '#3E3E3E', fontWeight: 600}}>Check-out</th>
                             <th style={{padding: '14px 16px', textAlign: 'left', color: '#3E3E3E', fontWeight: 600}}>Rooms</th>
-                            <th style={{padding: '14px 16px', textAlign: 'left', color: '#3E3E3E', fontWeight: 600}}>Guests</th>
                             <th style={{padding: '14px 16px', textAlign: 'left', color: '#3E3E3E', fontWeight: 600}}>Amount</th>
-                            <th style={{padding: '14px 16px', textAlign: 'left', color: '#3E3E3E', fontWeight: 600}}>Extra Expense</th>
-                            <th style={{padding: '14px 16px', textAlign: 'left', color: '#3E3E3E', fontWeight: 600}}>Source</th>
-                            <th style={{padding: '14px 16px', textAlign: 'left', color: '#3E3E3E', fontWeight: 600}}>Payment Status</th>
-                            <th style={{padding: '14px 16px', textAlign: 'left', color: '#3E3E3E', fontWeight: 600}}>Booking Status</th>
-                            <th style={{padding: '14px 16px', textAlign: 'center', color: '#3E3E3E', fontWeight: 600}}>Actions</th>
+                            <th style={{padding: '14px 16px', textAlign: 'left', color: '#3E3E3E', fontWeight: 600}}>Status</th>
+                            <th style={{padding: '14px 16px', textAlign: 'left', color: '#3E3E3E', fontWeight: 600}}>Actions</th>
                           </tr>
                         </thead>
                         <tbody>
                           {bookings.map((b: any, idx) => {
-                            // Display extra expense
-                            const expenseDisplay = (b as any).extraExpense || 'No expense'
                             return (
                               <tr key={b.id} style={{borderBottom: '1px solid #E8D7C3', backgroundColor: '#FFFFFF'}}>
                                 <td style={{padding: '12px 16px', color: '#3E3E3E', fontWeight: 500}}>{b.bookingReference}</td>
@@ -2135,25 +2359,7 @@ export default function AdminPage() {
                                 <td style={{padding: '12px 16px', color: '#3E3E3E'}}>{fmtDate(b.checkIn)}</td>
                                 <td style={{padding: '12px 16px', color: '#3E3E3E'}}>{fmtDate(b.checkOut)}</td>
                                 <td style={{padding: '12px 16px', color: '#3E3E3E'}}>{b.rooms.map((r: any) => r.roomNumber).join(', ')}</td>
-                                <td style={{padding: '12px 16px', color: '#A89B8B'}}>{b.totalGuests}</td>
                                 <td style={{padding: '12px 16px', color: '#3E3E3E', fontWeight: 600}}>{fmt(b.totalAmount)}</td>
-                                <td style={{padding: '12px 16px', color: '#3E3E3E', fontSize: '12px'}}>
-                                  <span style={{
-                                    backgroundColor: expenseDisplay === 'No expense' ? '#F0EAE3' : '#FFF9E6',
-                                    color: expenseDisplay === 'No expense' ? '#8B7355' : '#C9A84C',
-                                    padding: '4px 8px',
-                                    borderRadius: '4px',
-                                    fontWeight: 500
-                                  }}>
-                                    {expenseDisplay}
-                                  </span>
-                                </td>
-                                <td style={{padding: '12px 16px'}}>
-                                  <SourceBadge source={b.bookingSource} />
-                                </td>
-                                <td style={{padding: '12px 16px'}}>
-                                  <StatusBadge status={b.payments?.[0]?.paymentStatus || 'yet_to_pay'} />
-                                </td>
                                 <td style={{padding: '12px 16px'}}>
                                   <StatusBadge status={b.bookingStatus} />
                                 </td>
@@ -2411,7 +2617,20 @@ export default function AdminPage() {
                             </div>
                             <div style={{gridColumn: 'span 2'}}>
                               <Label style={{fontSize: '12px', color: '#A89B8B', marginBottom: '4px', display: 'block'}}>Total Amount</Label>
-                              <p style={{fontSize: '18px', fontWeight: 700, color: '#D4AF70'}}>{fmt(calculateTotalAmount())}</p>
+                              <div style={{backgroundColor: '#FFF9E6', border: '1px solid #D4C5B9', borderRadius: '4px', padding: '12px', fontSize: '12px', color: '#3E3E3E'}}>
+                                <div style={{display: 'flex', justifyContent: 'space-between', marginBottom: '6px'}}>
+                                  <span>Subtotal:</span>
+                                  <span>{fmt(calculateTotalAmount())}</span>
+                                </div>
+                                <div style={{display: 'flex', justifyContent: 'space-between', marginBottom: '6px'}}>
+                                  <span>Tax (5% GST):</span>
+                                  <span>{fmt(Math.round(calculateTotalAmount() * 0.05))}</span>
+                                </div>
+                                <div style={{display: 'flex', justifyContent: 'space-between', paddingTop: '6px', borderTop: '1px solid #D4C5B9', fontWeight: 700, color: '#D4AF70'}}>
+                                  <span>Total:</span>
+                                  <span>{fmt(Math.round(calculateTotalAmount() * 1.05))}</span>
+                                </div>
+                              </div>
                             </div>
                             <div style={{gridColumn: 'span 2'}}>
                               <Label style={{fontSize: '12px', color: '#A89B8B', marginBottom: '4px', display: 'block'}}>Notes</Label>
@@ -2680,21 +2899,6 @@ export default function AdminPage() {
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label style={{fontSize: '12px', color: '#A89B8B', marginBottom: '4px', display: 'block'}}>Payment Status</Label>
-              <select 
-                value={editPaymentStatus} 
-                onChange={(e) => setEditPaymentStatus(e.target.value)} 
-                style={{width: '100%', fontSize: '12px', height: '36px', padding: '0 8px', borderRadius: '4px', backgroundColor: '#FFFFFF', border: '1px solid #D4C5B9', color: '#3E3E3E', outline: 'none'}}
-                onFocus={(e) => e.currentTarget.style.borderColor = '#D4AF70'}
-                onBlur={(e) => e.currentTarget.style.borderColor = '#D4C5B9'}
-              >
-                <option value="yet_to_pay">Yet to Pay</option>
-                <option value="paid">Paid</option>
-                <option value="refunded">Refunded</option>
-              </select>
-            </div>
-
-            <div>
               <Label style={{fontSize: '12px', color: '#A89B8B', marginBottom: '4px', display: 'block'}}>Payment Method</Label>
               <select 
                 value={editPaymentMethod} 
@@ -2771,10 +2975,13 @@ export default function AdminPage() {
       <Dialog open={cancelPaymentId !== null} onOpenChange={(open) => !open && setCancelPaymentId(null)}>
         <DialogContent style={{backgroundColor: '#FFFFFF', border: '1px solid #D4C5B9', maxWidth: '28rem', borderRadius: '8px'}}>
           <DialogHeader>
-            <DialogTitle style={{color: '#3E3E3E', fontSize: '16px', fontWeight: 600}}>Cancel Payment & Refund</DialogTitle>
+            <DialogTitle style={{color: '#3E3E3E', fontSize: '16px', fontWeight: 600}}>Refund Payment</DialogTitle>
           </DialogHeader>
           <p style={{color: '#A89B8B', fontSize: '14px'}}>
-            Are you sure? This will mark the payment as refunded and cancel the booking.
+            Are you sure? This will:
+            <br />• Mark the payment as refunded
+            <br />• Cancel the booking
+            <br />• Free up the assigned rooms
           </p>
           <div className="flex gap-2 pt-4">
             <Button
@@ -2795,6 +3002,45 @@ export default function AdminPage() {
               Cancel
             </Button>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* CANCEL BOOKING CONFIRMATION DIALOG */}
+      <Dialog open={cancelId !== null} onOpenChange={(open) => !open && setCancelId(null)}>
+        <DialogContent style={{backgroundColor: '#FFFFFF', border: '1px solid #D4C5B9', borderRadius: '8px', maxWidth: '400px'}}>
+          <DialogHeader>
+            <DialogTitle style={{color: '#6B3F2A', fontSize: '16px', fontWeight: 600}}>Cancel Booking?</DialogTitle>
+            <DialogDescription style={{color: '#A89B8B', fontSize: '13px', marginTop: '8px'}}>
+              Are you sure you want to cancel booking #{cancelId}? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          
+          {pendingCancelError && (
+            <div className="flex gap-2 p-3 rounded-lg bg-red-500/10 border border-red-500/30">
+              <AlertCircle className="w-4 h-4 text-red-400 flex-shrink-0 mt-0.5" />
+              <p className="text-red-400 text-xs">{pendingCancelError}</p>
+            </div>
+          )}
+
+          <DialogFooter style={{display: 'flex', gap: '8px', paddingTop: '16px', marginTop: '16px', borderTop: '1px solid #D4C5B9'}}>
+            <Button
+              onClick={() => setCancelId(null)}
+              variant="outline"
+              style={{flex: 1, border: '1px solid #D4C5B9', color: '#A89B8B', fontSize: '12px', height: '36px', backgroundColor: '#FFFFFF', borderRadius: '4px'}}
+            >
+              Keep Booking
+            </Button>
+            <Button
+              onClick={confirmCancelBooking}
+              disabled={cancelLoading}
+              style={{flex: 1, backgroundColor: '#DC2626', color: '#FFFFFF', fontSize: '12px', height: '36px', borderRadius: '4px', border: 'none', fontWeight: 500, cursor: 'pointer'}}
+              onMouseEnter={(e) => !cancelLoading && (e.currentTarget.style.backgroundColor = '#B91C1C')}
+              onMouseLeave={(e) => !cancelLoading && (e.currentTarget.style.backgroundColor = '#DC2626')}
+            >
+              {cancelLoading && <Loader2 className="w-3.5 h-3.5 mr-2 animate-spin" />}
+              Cancel Booking
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
@@ -3083,131 +3329,28 @@ export default function AdminPage() {
       </Dialog>
 
       {/* ─── Bill Modal ───────────────────────────────────────────────── */}
-      <Dialog open={billModal !== null} onOpenChange={(open) => !open && setBillModal(null)}>
-        <DialogContent className="bg-white border-gray-300 max-w-lg" style={{ padding: '8px' }}>
-          <DialogHeader className="no-print">
-            <DialogTitle className="text-gray-900 text-lg">Guest Bill</DialogTitle>
+      <Dialog open={billModal !== null} onOpenChange={(open) => {
+        if (!open) {
+          setBillModal(null)
+          // Refresh bookings data when modal closes so check-out button is no longer available
+          if (activeTab === 'bookings') {
+            fetchBookings()
+          } else if (activeTab === 'checkinout') {
+            fetchToday()
+          }
+        }
+      }}>
+        <DialogContent className="bg-white border-gray-300" style={{ padding: '0px', maxHeight: '95vh', maxWidth: '800px', width: '100%', margin: 'auto' }}>
+          <DialogHeader>
+            <DialogTitle>Invoice - {billModal?.booking?.bookingReference || 'Loading...'}</DialogTitle>
+            <DialogDescription>Guest invoice for {billModal?.booking?.guest?.fullName || 'Guest'}</DialogDescription>
           </DialogHeader>
-
           {billModal && (
-            <div id="bill-content" className="space-y-4 text-gray-900 text-sm" style={{ maxHeight: '90vh', overflow: 'auto' }}>
-              {/* Header */}
-              <div className="border-b-2 border-gray-300 pb-3 text-center">
-                <h2 className="text-xl font-bold">MHomes Resort</h2>
-                <p className="text-xs text-gray-600">Guest Checkout Bill</p>
-              </div>
-
-              {/* Guest & Booking Info */}
-              <div className="space-y-1">
-                <div className="flex justify-between">
-                  <span className="font-medium">Booking Reference:</span>
-                  <span>{billModal?.booking?.bookingReference}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="font-medium">Guest Name:</span>
-                  <span>{billModal?.booking?.guest?.fullName}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="font-medium">Phone:</span>
-                  <span>{billModal?.booking?.guest?.phone}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="font-medium">Stay Period:</span>
-                  <span>
-                    {billModal?.booking?.checkIn && billModal?.booking?.checkOut ? `${fmtDate(billModal.booking.checkIn)} to ${fmtDate(billModal.booking.checkOut)}` : 'N/A'}
-                  </span>
-                </div>
-              </div>
-
-              {/* Room Details */}
-              <div className="border-y border-gray-300 py-3 space-y-2">
-                <h3 className="font-bold text-center mb-2">Room Details</h3>
-                {billModal?.booking?.rooms?.map((room, idx) => {
-                  const nights = billModal?.booking?.checkOut && billModal?.booking?.checkIn 
-                    ? Math.ceil(
-                        (new Date(billModal.booking.checkOut).getTime() - new Date(billModal.booking.checkIn).getTime()) /
-                          (1000 * 3600 * 24)
-                      )
-                    : 0;
-                  // Calculate price per night from total amount divided by nights and number of rooms
-                  const pricePerNight = room.pricePerNight && room.pricePerNight > 0 
-                    ? room.pricePerNight 
-                    : billModal?.booking?.totalAmount && billModal?.booking?.rooms ? parseFloat(billModal.booking.totalAmount.toString()) / nights / billModal.booking.rooms.length : 0;
-                  const roomTotal = pricePerNight * nights;
-                  return (
-                    <div key={idx} className="space-y-1 pb-2 border-b border-gray-200">
-                      <div className="flex justify-between">
-                        <span className="font-medium">Room {room.roomNumber}</span>
-                        <span>₹{pricePerNight.toFixed(2)}/night</span>
-                      </div>
-                      <div className="flex text-xs text-gray-600">
-                        <span>{nights} night{nights > 1 ? 's' : ''}</span>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-
-              {/* Charges Breakdown */}
-              <div className="space-y-2 border-b-2 border-gray-300 pb-3">
-                <div className="flex justify-between">
-                  <span>Room Charges</span>
-                  <span className="font-medium">₹{billModal?.booking?.totalAmount?.toFixed(2)}</span>
-                </div>
-                {billModal?.extraExpense && (
-                  <>
-                    {billModal.extraExpense.split(', ').map((expense, idx) => {
-                      const parts = expense.split('-₹')
-                      const name = parts[0]
-                      const amount = parts[1]
-                      return (
-                        <div key={idx} className="flex justify-between text-amber-700">
-                          <span>Extra Expense ({name})</span>
-                          <span className="font-medium">₹{amount}</span>
-                        </div>
-                      )
-                    })}
-                  </>
-                )}
-              </div>
-
-              {/* Total */}
-              <div className="flex justify-between text-lg font-bold bg-gray-100 p-3 rounded">
-                <span>Total Amount</span>
-                <span className="text-green-700">
-                  ₹{billModal.finalTotal}
-                </span>
-              </div>
-
-              {/* Payment Status */}
-              <div className="text-center text-xs text-gray-600 border-t pt-2">
-                <p className="text-xs">Thank you for your stay at MHomes Resort</p>
-              </div>
-            </div>
+            <InvoicePrintView bookingId={billModal.booking.id} />
           )}
-
-          <DialogFooter className="flex gap-3 pt-4 no-print">
-            <Button
-              onClick={() => {
-                setBillModal(null)
-                // Refresh all relevant data after check-out
-                Promise.all([fetchToday(), fetchBookings(), fetchPendingBookings(), fetchDashboard()])
-              }}
-              variant="outline"
-              className="flex-1 border-D4C5B9 text-gray-700"
-            >
-              Close
-            </Button>
-            <Button
-              onClick={() => window.print()}
-              className="flex-1 bg-amber-700 hover:bg-amber-800 text-white"
-            >
-              <Printer className="w-4 h-4 mr-2" />
-              Print Bill
-            </Button>
-          </DialogFooter>
         </DialogContent>
       </Dialog>
+
     </div>
   )
 }

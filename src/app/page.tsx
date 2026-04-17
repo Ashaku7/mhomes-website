@@ -26,7 +26,8 @@ import {
   Shield,
   Bath,
   Sparkles,
-  Loader2
+  Loader2,
+  Activity
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -425,7 +426,7 @@ function ContactFormComponent() {
     setErrorMessage(null)
 
     try {
-      const response = await fetch('http://localhost:5000/api/contact', {
+      const response = await fetch('/api/contact', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -816,7 +817,7 @@ export default function Home() {
   const amenities = [
     { icon: Wifi, name: 'High-Speed WiFi', description: 'Complimentary throughout resort' },
     { icon: Car, name: 'Valet Parking', description: 'Secure parking with valet service' },
-    { icon: Users, name: 'Pickleball', description: 'Outdoor court available for engaging physical activities' },
+    { icon: Activity, name: 'Pickleball', description: 'Outdoor court available for engaging physical activities' },
     { icon: Bath, name: 'Swimming Pool', description: 'A calm, cozy pool perfect for a refreshing dip.' },
     { icon: MapPin, name: 'Arulmigu Kallazhagar Sundararaja Perumal Temple', description: 'Nearby cultural landmark and local temples' }
   ]
@@ -1400,22 +1401,55 @@ export default function Home() {
             </p>
           </motion.div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 sm:gap-6 md:gap-8 lg:gap-12">
-            {amenities.map((amenity, index) => (
-              <motion.div
+          {/* Premium Amenities Grid - Symmetric */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-10 lg:gap-12 px-4">
+            {amenities.map((amenity) => (
+              <div
                 key={amenity.name}
-                initial={{ opacity: 0, y: 30 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.1 }}
-                whileHover={{ y: -8 }}
-                className="text-center group cursor-pointer"
+                className="flex flex-col items-center text-center"
               >
-                <motion.div className="w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 lg:w-28 lg:h-28 mx-auto bg-gradient-to-br from-accent/20 to-accent/5 rounded-full flex items-center justify-center mb-3 sm:mb-4 md:mb-6 group-hover:from-accent/30 group-hover:to-accent/10 transition-all duration-300 border border-accent/20 group-hover:border-accent/50 shadow-lg group-hover:shadow-xl">
-                  <amenity.icon className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 lg:w-14 lg:h-14 text-accent group-hover:scale-110 transition-transform" />
-                </motion.div>
-                <h3 className="luxury-heading text-xs sm:text-sm md:text-sm lg:text-sm font-semibold mb-1 sm:mb-2 group-hover:text-accent transition-colors">{amenity.name}</h3>
-                <p className="luxury-text text-xs text-muted-foreground group-hover:text-muted-foreground/80 transition-colors line-clamp-2">{amenity.description}</p>
-              </motion.div>
+                {/* Icon Container - Clean and Professional */}
+                <div className="mb-8 flex items-center justify-center"
+                  style={{
+                    width: '72px',
+                    height: '72px',
+                    borderRadius: '14px',
+                    backgroundColor: 'rgba(201, 168, 76, 0.06)',
+                    border: '1.5px solid rgba(201, 168, 76, 0.12)'
+                  }}>
+                  <amenity.icon 
+                    className="w-9 h-9" 
+                    style={{ 
+                      color: '#C9A84C', 
+                      strokeWidth: 1.5
+                    }} 
+                  />
+                </div>
+                
+                {/* Title - Professional Typography */}
+                <h3 style={{ 
+                  fontSize: '17px', 
+                  fontWeight: 600, 
+                  color: '#1A1A1A',
+                  marginBottom: '10px',
+                  fontFamily: 'Cormorant Garamond, serif',
+                  letterSpacing: '0.03em',
+                  lineHeight: 1.4
+                }}>
+                  {amenity.name}
+                </h3>
+                
+                {/* Description - Elegant and Refined */}
+                <p style={{
+                  fontSize: '13px',
+                  color: '#666666',
+                  fontWeight: 400,
+                  lineHeight: 1.7,
+                  letterSpacing: '0.01em'
+                }}>
+                  {amenity.description}
+                </p>
+              </div>
             ))}
           </div>
         </div>
@@ -1490,7 +1524,10 @@ export default function Home() {
                     className="luxury-heading mb-6"
                     style={{ fontSize: 'clamp(28px, 3vw, 42px)', fontWeight: 500, color: '#1A1A1A', letterSpacing: '-0.02em' }}
                   >
-                    {story.word}
+                    <em style={{ fontStyle: 'italic', color: '#C9A84C', marginRight: '0.05em', fontWeight: 600 }}>
+                      {story.word.charAt(0)}
+                    </em>
+                    {story.word.slice(1)}
                   </h3>
                   <p className="luxury-text mb-8" style={{ fontWeight: 300, color: '#4A4A4A', fontSize: '16px', lineHeight: 1.8 }}>
                     {story.description}

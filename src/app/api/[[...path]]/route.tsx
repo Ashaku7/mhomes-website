@@ -237,11 +237,71 @@ export async function GET(request: NextRequest) {
     }
 
     // Default 404 for unknown endpoints
+    // Letterhead/Images endpoint for bill printing
+    if (pathname === '/api/letterhead') {
+      const url = new URL(request.url)
+      const type = url.searchParams.get('type') || 'header'
+      
+      try {
+        const fs = await import('fs').then(m => m.promises)
+        const path = await import('path')
+        
+        const assetPath = type === 'footer' 
+          ? path.join(process.cwd(), 'backend/assets/letterhead_footer.png')
+          : path.join(process.cwd(), 'backend/assets/letterhead_header.png')
+        
+        try {
+          const imageBuffer = await fs.readFile(assetPath)
+          return new Response(new Uint8Array(imageBuffer), {
+            headers: {
+              'Content-Type': 'image/png',
+              'Cache-Control': 'public, max-age=3600'
+            }
+          })
+        } catch (e) {
+          // If footer doesn't exist, generate an SVG fallback
+          if (type === 'footer') {
+            const svgFooter = `
+              <svg width="1200" height="120" xmlns="http://www.w3.org/2000/svg">
+                <rect width="1200" height="120" fill="#FAFAF8"/>
+                <line x1="0" y1="0" x2="1200" y2="0" stroke="#C9A84C" stroke-width="3"/>
+                <text x="50" y="50" font-family="Arial, sans-serif" font-size="20" font-weight="bold" fill="#6B2D1F">MHomes Resort</text>
+                <text x="600" y="45" font-family="Arial, sans-serif" font-size="12" fill="#7A6A5A" text-anchor="middle">S-37, Foreigners Road, Madurai - 625001</text>
+                <text x="600" y="65" font-family="Arial, sans-serif" font-size="11" fill="#7A6A5A" text-anchor="middle">📧 karthikeyan@mhomes.co.in | 📱 +91-9765555346</text>
+                <line x1="0" y1="115" x2="1200" y2="115" stroke="#D4C5B9" stroke-width="1"/>
+              </svg>
+            `
+            return new Response(svgFooter, {
+              headers: {
+                'Content-Type': 'image/svg+xml',
+                'Cache-Control': 'public, max-age=3600'
+              }
+            })
+          }
+          
+          // For header, file should exist
+          console.warn(`Letterhead image not found: ${assetPath}`)
+          return NextResponse.json({
+            error: 'Image not found',
+            message: 'The requested letterhead image could not be found',
+            type: type,
+            path: assetPath
+          }, { status: 404 })
+        }
+      } catch (e) {
+        console.error('Error reading letterhead:', e)
+        return NextResponse.json({
+          error: 'Error reading image',
+          message: 'Could not process the letterhead image'
+        }, { status: 500 })
+      }
+    }
+
     return NextResponse.json(
       { 
         error: 'Endpoint not found',
         message: `The endpoint ${pathname} does not exist`,
-        availableEndpoints: ['/api/', '/api/contact', '/api/rooms', '/api/reviews', '/api/booking']
+        availableEndpoints: ['/api/', '/api/contact', '/api/rooms', '/api/reviews', '/api/booking', '/api/letterhead']
       },
       { status: 404 }
     )
@@ -418,6 +478,102 @@ Respond naturally and helpfully, keeping responses concise but informative.`
         message: 'Please check your request format and try again'
       },
       { status: 400 }
+    )
+  }
+}
+
+// Handle PATCH requests (admin operations)
+export async function PATCH(request: NextRequest) {
+  const { pathname } = new URL(request.url)
+  
+  try {
+    // ADMIN: Cancel payment and refund booking
+    if (pathname === '/api/admin/payments/:id/cancel' || pathname.match(/^\/api\/admin\/payments\/\d+\/cancel$/)) {
+      const paymentId = parseInt(pathname.split('/')[4])
+      
+      if (!paymentId) {
+        return NextResponse.json(
+          { success: false, message: 'Payment ID is required' },
+          { status: 400 }
+        )
+      }
+
+      try {
+        // Import singleton Prisma client
+        const { default: prisma } = await import('@/lib/prisma')
+
+        // Check if payment exists
+        const payment = await prisma.payment.findUnique({
+          where: { id: paymentId },
+          include: { booking: true },
+        })
+
+        if (!payment) {
+          return NextResponse.json(
+            { success: false, message: 'Payment not found' },
+            { status: 404 }
+          )
+        }
+
+        if (payment.paymentStatus === 'refunded') {
+          return NextResponse.json(
+            { success: false, message: 'Payment is already refunded' },
+            { status: 409 }
+          )
+        }
+
+        // Transaction: Update payment and booking atomically
+        const [refundedPayment, refundedBooking] = await prisma.$transaction([
+          prisma.payment.update({
+            where: { id: paymentId },
+            data: { paymentStatus: 'refunded' },
+          }),
+          prisma.booking.update({
+            where: { id: payment.bookingId },
+            data: { bookingStatus: 'cancelled' },
+          }),
+        ])
+
+        return NextResponse.json({
+          success: true,
+          data: {
+            id: refundedPayment.id,
+            amount: parseFloat(refundedPayment.amount?.toString() || '0'),
+            paymentMethod: refundedPayment.paymentMethod,
+            paymentStatus: refundedPayment.paymentStatus,
+            transactionId: refundedPayment.transactionId,
+            paymentDate: refundedPayment.paymentDate ? refundedPayment.paymentDate.toISOString() : null,
+            booking: {
+              id: refundedBooking.id,
+              bookingStatus: refundedBooking.bookingStatus,
+            },
+            message: 'Payment refunded and booking cancelled.',
+          },
+        })
+      } catch (dbError) {
+        console.error('Database error:', dbError)
+        throw dbError
+      }
+    }
+
+    return NextResponse.json(
+      { 
+        success: false,
+        error: 'Method not supported',
+        message: `PATCH method not supported for ${pathname}`
+      },
+      { status: 405 }
+    )
+
+  } catch (error) {
+    console.error('API PATCH Error:', error)
+    return NextResponse.json(
+      { 
+        success: false,
+        error: 'Internal server error',
+        message: error instanceof Error ? error.message : 'Could not process your request'
+      },
+      { status: 500 }
     )
   }
 }

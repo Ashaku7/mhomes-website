@@ -627,6 +627,8 @@ export default function ReservationPage() {
     } catch (err: any) {
       const msg = err?.response?.data?.message || err?.message || 'Booking failed.'
       setError(msg)
+      // Optional: Stay on step 3 to show error, or go back to step 1
+      // For now, we'll keep user on step 3 to see the error and try again
     } finally {
       setLoading(false)
       // Reset reCAPTCHA
@@ -795,14 +797,14 @@ export default function ReservationPage() {
                                   <div className="mt-auto pt-4 border-t space-y-4" style={{ borderColor: BORDER_LIGHT }}>
                                     <div className="grid grid-cols-2 gap-4">
                                       <div>
-                                        <p className="text-gray-600 text-xs mb-1">Per Night</p>
+                                        <p className="text-gray-600 text-xs mb-1">Per Night / Per Room</p>
                                         <p style={{ color: BUTTON_BROWN }} className="text-xl font-light">
                                           ₹{price.toLocaleString('en-IN')}
                                         </p>
                                       </div>
                                       <div>
-                                        <p className="text-gray-600 text-xs mb-1">Total ({searchResult.nights} night{searchResult.nights !== 1 ? 's' : ''})</p>
-                                        <p className="text-gray-900 text-xl font-light">₹{(price * (searchResult.nights || 1)).toLocaleString('en-IN')}</p>
+                                        <p className="text-gray-600 text-xs mb-1">Total ({count} {count === 1 ? 'room' : 'rooms'}, {searchResult.nights} night{searchResult.nights !== 1 ? 's' : ''})</p>
+                                        <p className="text-gray-900 text-xl font-light">₹{(price * count * (searchResult.nights || 1)).toLocaleString('en-IN')}</p>
                                       </div>
                                     </div>
                                     <Button onClick={() => setStep(3)} style={{ backgroundColor: BUTTON_BROWN }} className="w-full text-white font-semibold py-3 hover:opacity-90">
@@ -926,7 +928,15 @@ export default function ReservationPage() {
                           </CardContent>
                         </Card>
 
-                        {error && <ErrorBox message={error} />}
+                        {error && (
+                          <BookingErrorBox 
+                            message={error}
+                            onRetry={() => {
+                              setError(null)
+                              setStep(1)
+                            }}
+                          />
+                        )}
 
                         {/* reCAPTCHA */}
                         <div className="flex justify-center">
@@ -993,13 +1003,13 @@ export default function ReservationPage() {
                             <span className="text-gray-900">{formatRs(searchResult.totalAmount || 0)}</span>
                           </div>
                           <div className="flex justify-between">
-                            <span className="text-gray-600">Tax (18% GST)</span>
-                            <span className="text-gray-900">{formatRs(Math.round((searchResult.totalAmount || 0) * 0.18))}</span>
+                            <span className="text-gray-600">Tax (5% GST)</span>
+                            <span className="text-gray-900">{formatRs(Math.round((searchResult.totalAmount || 0) * 0.05))}</span>
                           </div>
                           <div className="flex justify-between pt-2 border-t" style={{ borderColor: BORDER_LIGHT }}>
                             <span className="text-gray-600">Total</span>
                             <span style={{ color: BRAND_GOLD }} className="text-lg font-semibold">
-                              {formatRs(Math.round((searchResult.totalAmount || 0) * 1.18))}
+                              {formatRs(Math.round((searchResult.totalAmount || 0) * 1.05))}
                             </span>
                           </div>
                         </div>
@@ -1091,11 +1101,6 @@ function SuccessPage({ booking }: { booking: BookingResult }) {
             <h1 style={{ fontFamily: 'Cormorant Garamond, serif', color: BRAND_GOLD }} className="text-4xl font-light mb-2">
               Reservation Received!
             </h1>
-            <p className="text-gray-600">
-              {roomSummaryLine
-                ? `Your reservation for been sent. Our team will contact you shortly to confirm your booking.`
-                : 'Your reservation has been sent. Our team will contact you shortly to confirm your booking.'}
-            </p>
           </div>
 
           <Card className="border" style={{ backgroundColor: `${CARD_LIGHT}80`, borderColor: BORDER_LIGHT }}>
@@ -1132,7 +1137,7 @@ function SuccessPage({ booking }: { booking: BookingResult }) {
                 <div style={{ borderColor: BORDER_LIGHT }} className="border-t"></div>
 
                 <div className="flex items-center justify-between">
-                  <span className="text-gray-400">Total Amount</span>
+                  <span className="text-gray-400">Advance Amount</span>
                   <span style={{ color: BRAND_GOLD }} className="text-lg font-semibold">
                     {formatRs(booking.totalAmount)}
                   </span>
@@ -1163,6 +1168,52 @@ function ErrorBox({ message }: { message: string }) {
     <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} className="flex items-start gap-2 rounded-lg bg-red-100 border border-red-300 px-4 py-3">
       <AlertCircle className="w-4 h-4 text-red-600 mt-0.5 shrink-0" />
       <p className="text-red-800 text-sm">{message}</p>
+    </motion.div>
+  )
+}
+
+function BookingErrorBox({ 
+  message, 
+  onRetry 
+}: { 
+  message: string
+  onRetry: () => void 
+}) {
+  // Determine error type and provide helpful guidance
+  const isRoomBlocked = message.includes('not available') || message.includes('conflicting')
+  const isMaintenanceIssue = message.includes('maintenance')
+  const isRoomNotFound = message.includes('do not exist')
+
+  let title = 'Booking Failed'
+  let explanation = ''
+
+  if (isRoomBlocked) {
+    title = 'Rooms No Longer Available'
+    explanation = 'Unfortunately, one or more of your selected rooms have been booked by another guest while you were completing your details. This happens when availability is high.'
+  } else if (isMaintenanceIssue) {
+    title = 'Rooms Under Maintenance'
+    explanation = 'One or more of your selected rooms are currently under maintenance and cannot be booked.'
+  } else if (isRoomNotFound) {
+    title = 'Room Not Found'
+    explanation = 'One or more of your selected rooms could not be found in our system.'
+  }
+
+  return (
+    <motion.div 
+      initial={{ opacity: 0, y: -4 }} 
+      animate={{ opacity: 1, y: 0 }} 
+      className="rounded-lg bg-red-50 border border-red-300 px-5 py-4 space-y-3"
+    >
+      <div className="flex items-start gap-3">
+        <AlertCircle className="w-5 h-5 text-red-600 mt-0.5 shrink-0" />
+        <div className="flex-1">
+          <h4 className="font-semibold text-red-900 text-sm">{title}</h4>
+          <p className="text-red-800 text-sm mt-1">{message}</p>
+          {explanation && (
+            <p className="text-red-700 text-xs mt-2">{explanation}</p>
+          )}
+        </div>
+      </div>
     </motion.div>
   )
 }
