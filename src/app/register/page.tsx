@@ -83,15 +83,15 @@ export default function RegisterPage() {
         <div className="flex flex-col items-center mb-8">
           <Link href="/">
             <Image
-              src="/mhomes-logo.png"
-              alt="MHomes"
+              src="/MHOMES-logo.png"
+              alt="MHOMES"
               width={72}
               height={72}
               className="object-contain mb-3"
             />
           </Link>
           <h1 className="text-2xl font-light tracking-widest text-amber-100" style={{ fontFamily: 'Playfair Display, serif' }}>
-            mhomes
+            MHOMES
           </h1>
           <p className="text-stone-500 text-xs tracking-widest uppercase mt-1">
             Resort & Spa
@@ -104,7 +104,7 @@ export default function RegisterPage() {
               Create your account
             </h2>
             <p className="text-stone-500 text-sm text-center mt-1">
-              Join MHomes and start your luxury experience
+              Join MHOMES and start your luxury experience
             </p>
           </CardHeader>
 
@@ -262,7 +262,7 @@ export default function RegisterPage() {
 
         <p className="text-center text-stone-700 text-xs mt-6">
           <Link href="/" className="hover:text-stone-500 transition-colors">
-            ← Back to MHomes Resort
+            ← Back to MHOMES Resort
           </Link>
         </p>
       </motion.div>

@@ -56,7 +56,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = async (email: string, password: string) => {
     const res = await authApi.login(email, password);
     const { token, user: userData } = res.data.data;
-    setCookie('mhomes_token', token, 1); // 1 day
+    setCookie('MHOMES_token', token, 1); // 1 day
     setUser(userData);
   };
 
@@ -69,13 +69,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   ) => {
     const res = await authApi.register(name, email, phone, password);
     const { token, user: userData } = res.data.data;
-    setCookie('mhomes_token', token, 1); // 1 day
+    setCookie('MHOMES_token', token, 1); // 1 day
     setUser(userData);
   };
 
   // ── Logout ────────────────────────────────────────────────────────────────
   const logout = () => {
-    deleteCookie('mhomes_token');
+    deleteCookie('MHOMES_token');
     setUser(null);
     if (typeof window !== 'undefined') {
       window.location.href = '/';

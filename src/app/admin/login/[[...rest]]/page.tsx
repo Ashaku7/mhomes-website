@@ -12,8 +12,8 @@ export default function AdminLoginPage() {
       gap: '24px'
     }}>
       <img
-        src="/mhomes-logo.png"
-        alt="MHomes Resort"
+        src="/MHOMES-logo.png"
+        alt="MHOMES Resort"
         style={{ height: '56px', width: 'auto' }}
       />
       <p style={{

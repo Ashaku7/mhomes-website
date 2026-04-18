@@ -37,7 +37,7 @@ const api = axios.create({
 
 // Attach token from cookie on every request
 api.interceptors.request.use((config) => {
-  const token = getCookie('mhomes_token');
+  const token = getCookie('MHOMES_token');
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
@@ -52,7 +52,7 @@ api.interceptors.response.use(
     const requestUrl: string = error.config?.url || '';
     const isGetMe = requestUrl.includes('/api/auth/me');
     if (error.response?.status === 401 && !isGetMe) {
-      deleteCookie('mhomes_token');
+      deleteCookie('MHOMES_token');
       if (typeof window !== 'undefined') {
         window.location.href = '/login';
       }

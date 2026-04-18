@@ -31,7 +31,7 @@ export const sendContactEmail = async (
     const htmlContent = `
       <html>
         <body style="font-family: Arial, sans-serif; color: #333; line-height: 1.6;">
-          <h2 style="color: #6B3F2A;">New Message from MHomes Resort Website</h2>
+          <h2 style="color: #6B3F2A;">New Message from MHOMES Resort Website</h2>
           <p><strong>Name:</strong> ${firstName} ${lastName}</p>
           <p><strong>Email:</strong> <a href="mailto:${email}">${email}</a></p>
           <p><strong>Subject:</strong> ${subject}</p>
@@ -39,7 +39,7 @@ export const sendContactEmail = async (
           <p><strong>Message:</strong></p>
           <p>${message.replace(/\n/g, '<br>')}</p>
           <hr style="border: none; border-top: 1px solid #E8E4DC; margin: 20px 0;">
-          <p><small style="color: #6B6B6B;">Sent from MHomes Resort contact form</small></p>
+          <p><small style="color: #6B6B6B;">Sent from MHOMES Resort contact form</small></p>
         </body>
       </html>
     `
@@ -47,7 +47,7 @@ export const sendContactEmail = async (
     await resend.emails.send({
       from: FROM_EMAIL,
       to: HOTEL_EMAIL,
-      subject: `New Contact Form Submission - MHomes Resort`,
+      subject: `New Contact Form Submission - MHOMES Resort`,
       html: htmlContent,
       reply_to: email
     })
@@ -91,7 +91,7 @@ export const sendBookingConfirmation = async (
             
             <!-- Header -->
             <div style="text-align: center; margin-bottom: 30px; padding-bottom: 20px; border-bottom: 2px solid #E8E4DC;">
-              <h1 style="color: #C9A84C; margin: 0; font-size: 24px; font-weight: 600;">MHomes Resort</h1>
+              <h1 style="color: #C9A84C; margin: 0; font-size: 24px; font-weight: 600;">MHOMES Resort</h1>
               <p style="color: #6B6B6B; margin: 5px 0 0 0; font-size: 14px;">Luxury Redefined</p>
             </div>
 
@@ -99,7 +99,7 @@ export const sendBookingConfirmation = async (
             <h2 style="color: #6B3F2A; font-size: 20px; margin: 0 0 10px 0;">Hello ${guestName},</h2>
             
             <p style="color: #1A1A1A; margin: 15px 0;">
-              Thank you for choosing MHomes Resort! Your reservation has been received and we're thrilled to have you join us.
+              Thank you for choosing MHOMES Resort! Your reservation has been received and we're thrilled to have you join us.
             </p>
 
             <p style="color: #1A1A1A; margin: 15px 0;">
@@ -149,7 +149,7 @@ export const sendBookingConfirmation = async (
             <!-- Footer -->
             <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #E8E4DC; text-align: center;">
               <p style="color: #6B6B6B; margin: 0; font-size: 14px;">
-                <strong>MHomes Resort</strong> | <a href="https://mhomes.co.in" style="color: #C9A84C; text-decoration: none;">mhomes.co.in</a>
+                <strong>MHOMES Resort</strong> | <a href="https://MHOMES.co.in" style="color: #C9A84C; text-decoration: none;">MHOMES.co.in</a>
               </p>
               <p style="color: #6B6B6B; margin: 5px 0 0 0; font-size: 12px;">
                 Luxury • Comfort • Experience
@@ -164,7 +164,7 @@ export const sendBookingConfirmation = async (
     await resend.emails.send({
       from: FROM_EMAIL,
       to: guestEmail,
-      subject: `Reservation Received - MHomes Resort [${bookingReference}]`,
+      subject: `Reservation Received - MHOMES Resort [${bookingReference}]`,
       html: htmlContent,
       reply_to: HOTEL_EMAIL
     })

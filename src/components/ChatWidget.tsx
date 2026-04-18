@@ -20,7 +20,7 @@ interface ChatWidgetProps {
 
 const ChatWidget = ({ isChatOpen, setIsChatOpen }: ChatWidgetProps) => {
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
-    { id: 1, text: 'Hello! Welcome to MHomes Resort. I\'m your virtual assistant. How can I help you plan your perfect vacation?', sender: 'bot', timestamp: new Date() }
+    { id: 1, text: 'Hello! Welcome to MHOMES Resort. I\'m your virtual assistant. How can I help you plan your perfect vacation?', sender: 'bot', timestamp: new Date() }
   ])
   const [chatInput, setChatInput] = useState('')
   const [isChatLoading, setIsChatLoading] = useState(false)

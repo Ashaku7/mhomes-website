@@ -17,7 +17,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import {
   CalendarDays, Users, Search, Check, ChevronRight, ChevronDown,
   Loader2, AlertCircle, ArrowLeft, Home, PhoneCall, Wifi, Wind,
-  Droplets, Bell, UtensilsCrossed, Eye, Wine, Sofa, MapPin
+  Droplets, Bell, UtensilsCrossed, Eye, Wine, Sofa, MapPin, Phone, Mail
 } from 'lucide-react'
 
 // ─── Constants 
@@ -643,11 +643,11 @@ export default function ReservationPage() {
     <div style={{ backgroundColor: BG_LIGHT }} className="min-h-screen text-gray-900">
       {/* Header */}
       <div className="border-b sticky top-0 z-40 backdrop-blur-sm" style={{ borderColor: BORDER_LIGHT, backgroundColor: CARD_LIGHT }}>
-        <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2">
-            <Image src="/mhomes-logo.png" alt="MHomes" width={40} height={40} />
-            <span style={{ fontFamily: 'Cormorant Garamond, serif', color: BUTTON_BROWN }} className="font-light tracking-widest text-lg hidden sm:block">
-              mhomes
+        <div className="max-w-7xl mx-auto px-4 py-0 flex items-center justify-between">
+          <Link href="/" className="flex items-center gap-0 whitespace-nowrap leading-none">
+            <Image src="/MHOMES-logo.png" alt="MHOMES" width={160} height={160} className="block h-22 w-auto" />
+            <span style={{ fontFamily: 'Cormorant Garamond, serif', color: BUTTON_BROWN }} className="font-light tracking-widest text-lg hidden sm:block -ml-10 -mt-4 leading-none">
+              MHOMES
             </span>
           </Link>
           <span className="text-gray-600 text-sm">Book Your Stay</span>
@@ -664,7 +664,7 @@ export default function ReservationPage() {
               <h1 style={{ fontFamily: 'Cormorant Garamond, serif', color: BUTTON_BROWN }} className="text-4xl font-light mb-1">
                 Reserve Your Stay
               </h1>
-              <p className="text-gray-600 text-sm">Experience luxury at MHomes Resort</p>
+              <p className="text-gray-600 text-sm">Experience luxury at MHOMES Resort</p>
             </div>
 
             <div className="mt-10">

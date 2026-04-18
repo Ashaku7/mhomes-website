@@ -1,4 +1,4 @@
-# MHomes Resort - Luxury Destination Website
+# MHOMES Resort - Luxury Destination Website
 
 A sophisticated, modern luxury resort booking website featuring a responsive design, smooth animations, and an intuitive multi-step reservation system. Built with cutting-edge web technologies to deliver an immersive user experience.
 
@@ -6,7 +6,7 @@ A sophisticated, modern luxury resort booking website featuring a responsive des
 
 ## 📋 Project Overview
 
-**MHomes Resort** is a full-featured booking platform that showcases a tropical paradise resort with:
+**MHOMES Resort** is a full-featured booking platform that showcases a tropical paradise resort with:
 
 - **Hero Section**: Captivating landing page with video background and search form
 - **10 Luxury Sections**: Comprehensive website with resort amenities, room details, reviews, and more
@@ -49,7 +49,7 @@ A sophisticated, modern luxury resort booking website featuring a responsive des
 ## 📁 Project Structure
 
 ```
-mhomes-resort/
+MHOMES-resort/
 ├── src/
 │   ├── app/
 │   │   ├── layout.tsx              # Root layout with global styles
@@ -292,7 +292,7 @@ Data persists across browser sessions
 ### Reservations
 ```json
 {
-  "mhomesReservations": [
+  "MHOMESReservations": [
     {
       "id": "1731910234567",
       "checkIn": "2025-11-20",
@@ -315,7 +315,7 @@ Data persists across browser sessions
 ### Reviews
 ```json
 {
-  "mhomesReviews": [
+  "MHOMESReviews": [
     {
       "id": "1731910234568",
       "name": "Sarah Johnson",
@@ -342,7 +342,7 @@ Data persists across browser sessions
 - `luxury-heading` - Premium typography styling
 - `luxury-text` - Body text with refined appearance
 - `hero-text-shadow` - Hero section text effects
-- `mhomes-brown` - Brand color for logo
+- `MHOMES-brown` - Brand color for logo
 
 ---
 
@@ -380,7 +380,7 @@ The project uses Tailwind CSS breakpoints:
 ```bash
 # Clone the repository
 git clone <repository-url>
-cd mhomes-resort
+cd MHOMES-resort
 
 # Install dependencies
 npm install
@@ -542,7 +542,7 @@ npm start
 
 ## 📄 License
 
-This project is created for the MHomes Resort brand and is proprietary.
+This project is created for the MHOMES Resort brand and is proprietary.
 
 ---
 

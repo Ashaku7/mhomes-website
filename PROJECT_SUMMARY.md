@@ -1,8 +1,8 @@
-# MHomes Resort - Complete Project Summary
+# MHOMES Resort - Complete Project Summary
 
 ## PROJECT OVERVIEW
 
-**MHomes Resort** is a full-stack luxury resort booking and management system with an integrated admin dashboard. It handles online guest bookings, walk-in registrations, payment management, room occupancy tracking, and reservation administration.
+**MHOMES Resort** is a full-stack luxury resort booking and management system with an integrated admin dashboard. It handles online guest bookings, walk-in registrations, payment management, room occupancy tracking, and reservation administration.
 
 **Live Dates:** Development started March 2026 | Security implementation completed April 13, 2026
 
@@ -251,8 +251,8 @@ NEXT_PUBLIC_ADMIN_EMAIL=akash.ark.g@gmail.com
 NODE_ENV=development
 PORT=5000
 FRONTEND_URL=http://localhost:3000
-DATABASE_URL=postgresql://user:pass@localhost:5432/mhomes_db
-JWT_SECRET=mhomes_super_secret_key
+DATABASE_URL=postgresql://user:pass@localhost:5432/MHOMES_db
+JWT_SECRET=MHOMES_super_secret_key
 CLERK_SECRET_KEY=sk_test_...
 ADMIN_ALLOWED_EMAILS=akash.ark.g@gmail.com
 RESEND_API_KEY=...
@@ -326,7 +326,7 @@ You can share this with any AI and ask it to:
 
 ```bash
 # Frontend
-cd mhomes-resort
+cd MHOMES-resort
 npm install
 npm run dev                    # http://localhost:3000
 

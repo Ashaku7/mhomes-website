@@ -20,6 +20,7 @@ import {
   Car,
   ChevronDown,
   Users,
+  CalendarDays,
   ArrowRight,
   Quote,
   Award,
@@ -27,7 +28,9 @@ import {
   Bath,
   Sparkles,
   Loader2,
-  Activity
+  Activity,
+  Building,
+  Smartphone
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -35,7 +38,6 @@ import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import ChatWidget from '@/components/ChatWidget'
-import { Separator } from '@/components/ui/separator'
 
 // ═════════════════════════════════════════════════════════════════════════════
 // DATE RANGE PICKER COMPONENT
@@ -679,27 +681,8 @@ export default function Home() {
         setTopReviews(top5)
       } catch (error) {
         console.error('Error fetching reviews:', error)
-        // Use fallback reviews on error
-        setTopReviews([
-          {
-            name: 'Sarah Johnson',
-            location: 'New York, USA',
-            rating: 5,
-            text: 'Absolutely magical experience! The overwater villa was beyond our dreams, and the service was impeccable. Can\'t wait to return!',
-          },
-          {
-            name: 'Marco Rodriguez',
-            location: 'Madrid, Spain',
-            rating: 5,
-            text: 'The perfect honeymoon destination. Every detail was carefully planned, from the private beach dinner to the couples spa treatments.',
-          },
-          {
-            name: 'Emily Chen',
-            location: 'Singapore',
-            rating: 5,
-            text: 'Luxury redefined. The attention to detail and personalized service made our anniversary celebration truly unforgettable.',
-          }
-        ])
+        // Use hardcoded testimonials as fallback
+        setTopReviews(testimonials)
       } finally {
         setReviewsLoading(false)
       }
@@ -770,7 +753,7 @@ export default function Home() {
       bedType: 'Queen Bed',
       sqft: '45 sqm',
       maxGuests: '2',
-      features: ['Pool View', 'Queen Bed', '45 sqm', 'Mini Bar']
+      features: ['Pool View', 'Queen Bed', '45 sqm', 'Work Desk']
     },
     {
       name: 'Premium Plus Room',
@@ -786,33 +769,47 @@ export default function Home() {
   ]
 
   const roomAmenities = {
-    'Premium Room': ['42-inch Smart TV', 'Premium Bedding', 'Rainfall Shower', 'Air Conditioning', 'Mini Bar', 'Work Desk', 'High-Speed WiFi', 'Flat-screen TV', 'Bath Robes', 'Premium Toiletries', 'Nespresso Machine', 'Safe Deposit Box', 'Turn-down Service', 'Daily Housekeeping'],
-    'Premium Plus Room': ['32-inch Smart TV', 'Luxury Bedding', 'Modern Bathroom', 'Climate Control', 'Kitchenette', 'Dining Area', 'High-Speed WiFi', 'Seating Area', 'Premium Toiletries', 'Walk-in Shower', 'Free Coffee Maker', 'Digital Lock', 'Express Check-in', 'Daily Cleaning']
+    'Premium Room': ['32-inch Smart TV', 'Premium Bedding', 'Rainfall Shower', 'Air Conditioning', 'Work Desk', 'High-Speed WiFi', 'Flat-screen TV','Premium Toiletries','Walk-In Shower', 'Daily Housekeeping'],
+    'Premium Plus Room': ['42-inch Smart TV','High-Speed WiFi', 'Seating Area','Air Conditioning', 'Rainfall Shower','Premium Toiletries','Work Desk', 'High-Speed WiFi','BathTub', 'Daily Cleaning']
   }
 
   const testimonials = [
-    {
-      name: 'Sarah Johnson',
-      location: 'New York, USA',
-      rating: 5,
-      text: 'Absolutely magical experience! The overwater villa was beyond our dreams, and the service was impeccable. Can\'t wait to return!',
-      image: '/api/placeholder/60/60'
-    },
-    {
-      name: 'Marco Rodriguez',
-      location: 'Madrid, Spain',
-      rating: 5,
-      text: 'The perfect honeymoon destination. Every detail was carefully planned, from the private beach dinner to the couples spa treatments.',
-      image: '/api/placeholder/60/60'
-    },
-    {
-      name: 'Emily Chen',
-      location: 'Singapore',
-      rating: 5,
-      text: 'Luxury redefined. The attention to detail and personalized service made our anniversary celebration truly unforgettable.',
-      image: '/api/placeholder/60/60'
-    }
-  ]
+  {
+    name: 'Arjun Mehta',
+    location: 'Mumbai, India',
+    rating: 5,
+    text: 'Stayed in the Premium Plus Room for our anniversary and it exceeded every expectation. The room was spotless, staff were incredibly warm, and the whole experience felt very personal. Highly recommend MHOMES to anyone looking for a peaceful luxury getaway.',
+    image: '/api/placeholder/60/60'
+  },
+  {
+    name: 'Priya Subramaniam',
+    location: 'Chennai, India',
+    rating: 5,
+    text: 'We booked two Premium Rooms for a family trip and the entire process from online booking to check-out was seamless. The rooms were spacious, well-maintained, and the team made sure every need was taken care of. Will definitely be coming back!',
+    image: '/api/placeholder/60/60'
+  },
+  {
+    name: 'Karthik Rajan',
+    location: 'Coimbatore, India',
+    rating: 5,
+    text: 'MHOMES Resort is a hidden gem. The ambience is serene, the rooms are beautifully maintained, and the staff go out of their way to make you feel at home. Checked in for a weekend trip and honestly did not want to leave.',
+    image: '/api/placeholder/60/60'
+  },
+  {
+    name: 'Sneha & Vikram Nair',
+    location: 'Bangalore, India',
+    rating: 5,
+    text: 'Chose MHOMES for our honeymoon and it was the best decision we made. The Premium Plus Room was stunning, the privacy was great, and the staff were so thoughtful — they even surprised us with a small decoration in the room. Perfect in every way.',
+    image: '/api/placeholder/60/60'
+  },
+  {
+    name: 'Deepa Krishnamurthy',
+    location: 'Madurai, India',
+    rating: 5,
+    text: 'Attended a small family gathering here and the experience was wonderful. Booking multiple rooms was easy, the property is well-kept, and the overall vibe is calm and luxurious. Great value for the quality you get. Strongly recommend MHOMES Resort.',
+    image: '/api/placeholder/60/60'
+  }
+];
 
   const amenities = [
     { icon: Wifi, name: 'High-Speed WiFi', description: 'Complimentary throughout resort' },
@@ -840,8 +837,8 @@ export default function Home() {
     },
     {
       word: 'Meena',
-      description: 'Our visionary founder whose passion and dreams transformed an island into a sanctuary of luxury and wonder. Meena\'s dedication to excellence and unwavering commitment to guest happiness is woven into the very fabric of MHomes Resort. Her legacy is every smile, every memory, and every magical moment our guests experience.',
-      image: '/mhomes-logo.png'
+      description: 'Our visionary founder whose passion and dreams transformed an island into a sanctuary of luxury and wonder. Meena\'s dedication to excellence and unwavering commitment to guest happiness is woven into the very fabric of MHOMES Resort. Her legacy is every smile, every memory, and every magical moment our guests experience.',
+      image: '/MHOMES-logo.png'
     }
   ]
 
@@ -916,8 +913,8 @@ export default function Home() {
             >
               <div className="relative">
                 <Image
-                  src="/mhomes-logo.png"
-                  alt="MHomes Loading"
+                  src="/MHOMES-logo.png"
+                  alt="MHOMES Loading"
                   width={100}
                   height={100}
                   className="object-contain drop-shadow-lg"
@@ -933,7 +930,7 @@ export default function Home() {
               transition={{ delay: 0.2, duration: 0.8 }}
             >
               <h2 className="luxury-heading text-4xl font-light tracking-widest text-amber-900">
-                mhomes
+                MHOMES
               </h2>
               <motion.div
                 className="flex items-center justify-center gap-3"
@@ -1012,8 +1009,8 @@ export default function Home() {
               <Link href="#home" className="flex items-center space-x-3">
                 <div className="flex items-center justify-center -my-6 relative top-2">
                   <Image
-                    src="/mhomes-logo.png"
-                    alt="MHomes Resort Logo"
+                    src="/MHOMES-logo.png"
+                    alt="MHOMES Resort Logo"
                     width={160}
                     height={160}
                     priority
@@ -1059,7 +1056,7 @@ export default function Home() {
               transition={{ delay: 0.3 }}
             >
               <Link href="reservation">
-                <Button className="bg-primary hover:bg-primary/90 text-primary-foreground px-5 py-1.5 shadow-md transition-colors duration-200" style={{ fontFamily: 'var(--font-label)', fontSize: '12px', fontWeight: 500, letterSpacing: '0.1em', textTransform: 'uppercase' as const, borderRadius: '2px' }}>
+                <Button className="bg-primary hover:bg-primary/90 text-primary-foreground px-5 py-1.5 shadow-md transition-colors duration-200 rounded-lg" style={{ fontFamily: 'var(--font-label)', fontSize: '12px', fontWeight: 500, letterSpacing: '0.1em', textTransform: 'uppercase' as const }}>
                   Reserve now
                 </Button>
               </Link>
@@ -1074,7 +1071,7 @@ export default function Home() {
                 variant="outline"
                 size="sm"
                 onClick={() => setIsMenuOpen(!isMenuOpen)}
-                className="border-primary/30 hover:border-primary/50"
+                className="border-primary/30 hover:border-primary/50 rounded-lg"
               >
                 {isMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
               </Button>
@@ -1108,7 +1105,7 @@ export default function Home() {
               {/* Mobile Reserve now button */}
               <div className="border-t border-primary/10 pt-3">
                 <Link href="#booking" onClick={() => setIsMenuOpen(false)} className="w-full">
-                  <Button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold rounded-full transition-colors duration-200">
+                  <Button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold rounded-lg transition-colors duration-200">
                     📅 Reserve now
                   </Button>
                 </Link>
@@ -1213,7 +1210,7 @@ export default function Home() {
             <div className="bg-white/10 glass-effect text-white px-4 py-2 rounded-lg">
               <div className="text-sm">{heroError}</div>
               <div className="mt-2 flex gap-2">
-                <Button size="sm" onClick={() => {
+                <Button size="sm" className="rounded-lg" onClick={() => {
                   setHeroError(null)
                   setHeroAutoplayFailed(false)
                   const v = heroVideoRef.current
@@ -1267,7 +1264,7 @@ export default function Home() {
                 lineHeight: 1.7
               }}
             >
-              Experience unparalleled luxury at MHomes Resort, where every moment is crafted to perfection.
+              Experience unparalleled luxury at MHOMES Resort, where every moment is crafted to perfection.
             </motion.p>
 
             {/* Booking form - SIMPLE & POSH VERSION */}
@@ -1380,23 +1377,11 @@ export default function Home() {
             transition={{ duration: 0.8 }}
             className="text-center max-w-4xl mx-auto mb-20"
           >
-            <motion.div
-              initial={{ opacity: 0 }}
-              whileInView={{ opacity: 1 }}
-              transition={{ delay: 0.1 }}
-              className="inline-block mb-6"
-            >
-              <Badge className="bg-accent/20 text-accent border border-accent/50 px-4 py-2">
-                <Sparkles className="w-4 h-4 mr-2" />
-                Luxury Experience
-              </Badge>
-            </motion.div>
-
             <h2 className="luxury-heading mb-6" style={{ fontSize: 'clamp(32px, 4vw, 56px)', fontWeight: 400, letterSpacing: '-0.02em', color: '#1A1A1A' }}>
               Luxury Redefined
             </h2>
             <p className="luxury-text text-muted-foreground" style={{ fontWeight: 300, fontSize: '16px', color: '#4A4A4A', lineHeight: 1.8, maxWidth: '600px', margin: '0 auto' }}>
-              Nestled in pristine waters, MHomes Resort offers an unparalleled luxury experience.
+              Nestled in pristine waters, MHOMES Resort offers an unparalleled luxury experience.
               From overwater villas to world-class amenities, every detail is crafted to perfection.
             </p>
           </motion.div>
@@ -1472,7 +1457,7 @@ export default function Home() {
               What does the M stand for?
             </h2>
             <p className="luxury-text text-muted-foreground" style={{ fontWeight: 300, fontSize: '16px', color: '#4A4A4A', lineHeight: 1.8, maxWidth: '600px', margin: '0 auto' }}>
-              Discover the profound meaning behind MHomes — a fusion of culture, mythology, nature, and visionary dreams.
+              Discover the profound meaning behind MHOMES — a fusion of culture, mythology, nature, and visionary dreams.
             </p>
           </motion.div>
 
@@ -1534,7 +1519,7 @@ export default function Home() {
                   </p>
                   <motion.div className="flex items-center gap-3" whileHover={{ x: 10 }}>
                     <div className="h-0.5 w-12 bg-[#C9A84C]" />
-                    <span style={{ fontFamily: 'var(--font-label)', fontSize: '11px', letterSpacing: '0.2em', textTransform: 'uppercase', color: '#C9A84C' }}>A pillar of MHomes</span>
+                    <span style={{ fontFamily: 'var(--font-label)', fontSize: '11px', letterSpacing: '0.2em', textTransform: 'uppercase', color: '#C9A84C' }}>A pillar of MHOMES</span>
                   </motion.div>
                 </motion.div>
               </motion.div>
@@ -1548,7 +1533,7 @@ export default function Home() {
             className="text-center mt-20 max-w-3xl mx-auto"
           >
             <p className="luxury-text" style={{ fontWeight: 300, color: '#4A4A4A', fontSize: '16px', lineHeight: 1.8, maxWidth: '600px', margin: '0 auto' }}>
-              These four pillars weave together the soul of <span style={{ color: '#C9A84C', fontWeight: 500 }}>MHomes Resort</span> —
+              These four pillars weave together the soul of <span style={{ color: '#C9A84C', fontWeight: 500 }}>MHOMES Resort</span> —
               where ancient cultural heritage meets contemporary luxury, where nature flows freely, and where dreams transform into unforgettable realities.
             </p>
           </motion.div>
@@ -1572,12 +1557,6 @@ export default function Home() {
             whileInView={{ opacity: 1, y: 0 }}
             className="text-center mb-20"
           >
-            <motion.div className="inline-block mb-4">
-              <Badge className="bg-accent/20 text-accent border border-accent/50">
-                <Sparkles className="w-4 h-4 mr-2" />
-                Premium Rooms
-              </Badge>
-            </motion.div>
             <h2 className="luxury-heading mb-6" style={{ fontSize: 'clamp(32px, 4vw, 56px)', fontWeight: 400, letterSpacing: '-0.02em', color: '#1A1A1A' }}>Exquisite Accommodations</h2>
             <p className="luxury-text" style={{ fontWeight: 300, fontSize: '16px', color: '#4A4A4A', lineHeight: 1.8, maxWidth: '600px', margin: '0 auto' }}>
               Discover your perfect sanctuary with thoughtfully designed rooms tailored to your every need.
@@ -1698,7 +1677,7 @@ export default function Home() {
                         whileTap={{ scale: 0.98 }}
                       >
                         <Link href="/reservation" className="w-full">
-                          <Button size="lg" className="w-full bg-primary hover:bg-primary/90 text-primary-foreground hover:shadow-xl px-12 py-4 text-lg rounded-xl font-semibold transition-all duration-200">
+                          <Button size="lg" className="w-full bg-primary hover:bg-primary/90 text-primary-foreground hover:shadow-xl px-12 py-4 text-lg rounded-lg font-semibold transition-all duration-200">
                             Reserve now
                             <ArrowRight className="ml-2 w-5 h-5" />
                           </Button>
@@ -1711,7 +1690,7 @@ export default function Home() {
                         <Button
                           size="lg"
                           variant="outline"
-                          className="border-2 border-primary text-primary hover:bg-primary/5 px-12 py-4 text-lg rounded-xl font-semibold"
+                          className="border-2 border-primary text-primary hover:bg-primary/5 px-12 py-4 text-lg rounded-lg font-semibold"
                           onClick={() => setSelectedAmenitiesRoom(room.name)}
                         >
                           View Amenities
@@ -1768,7 +1747,7 @@ export default function Home() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {roomAmenities[selectedAmenitiesRoom as keyof typeof roomAmenities]?.map((amenity, i) => (
                   <motion.div
-                    key={amenity}
+                    key={`${amenity}-${i}`}
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: i * 0.04 }}
@@ -1825,17 +1804,11 @@ export default function Home() {
             whileInView={{ opacity: 1, y: 0 }}
             className="text-center mb-20"
           >
-            <motion.div className="inline-block mb-4">
-              <Badge className="bg-accent/20 text-accent border border-accent/50">
-                <Sparkles className="w-4 h-4 mr-2" />
-                Gallery Showcase
-              </Badge>
-            </motion.div>
             <h2 className="luxury-heading mb-6" style={{ fontSize: 'clamp(32px, 4vw, 56px)', fontWeight: 400, letterSpacing: '-0.02em', color: '#1A1A1A' }}>
               Picture Perfect Moments
             </h2>
             <p className="luxury-text" style={{ fontWeight: 300, fontSize: '16px', color: '#4A4A4A', lineHeight: 1.8, maxWidth: '600px', margin: '0 auto' }}>
-              Explore the breathtaking beauty of MHomes Resort through our curated gallery of stunning imagery.
+              Explore the breathtaking beauty of MHOMES Resort through our curated gallery of stunning imagery.
             </p>
           </motion.div>
 
@@ -2015,41 +1988,35 @@ export default function Home() {
             whileInView={{ opacity: 1, y: 0 }}
             className="text-center mb-20"
           >
-            <motion.div className="inline-block mb-4">
-              <Badge className="bg-accent/20 text-accent border border-accent/50">
-                <Star className="w-4 h-4 mr-2 fill-accent" />
-                Trusted Reviews
-              </Badge>
-            </motion.div>
             <h2 className="luxury-heading mb-6" style={{ fontSize: 'clamp(32px, 4vw, 56px)', fontWeight: 400, letterSpacing: '-0.02em', color: '#1A1A1A' }}>
               Guest Testimonials
             </h2>
             <p className="luxury-text" style={{ fontWeight: 300, fontSize: '16px', color: '#4A4A4A', lineHeight: 1.8, maxWidth: '600px', margin: '0 auto' }}>
-              Discover what our guests are saying about their extraordinary experiences at MHomes Resort.
+              Discover what our guests are saying about their extraordinary experiences at MHOMES Resort.
             </p>
           </motion.div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {(reviewsLoading ? testimonials : topReviews).map((testimonial, index) => (
               <motion.div
                 key={testimonial.name || index}
                 initial={{ opacity: 0, y: 50 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.15 }}
-                whileHover={{ y: -8, boxShadow: "0 20px 60px rgba(var(--accent), 0.2)" }}
+                whileHover={{ y: -6, boxShadow: "0 14px 40px rgba(var(--accent), 0.16)" }}
                 className="h-full"
               >
                 <Card className="luxury-card h-full bg-gradient-to-br from-white/50 to-white/30 border border-accent/20 hover:border-accent/50 transition-all duration-300 backdrop-blur-sm">
-                  <CardContent className="pt-8">
+                  <CardContent className="pt-6 pb-6 px-6">
                     <motion.div
                       initial={{ scale: 0.8 }}
                       whileInView={{ scale: 1 }}
                       transition={{ type: "spring" }}
                     >
-                      <Quote className="w-10 h-10 text-accent mb-6" />
+                      <Quote className="w-7 h-7 text-accent mb-4" />
                     </motion.div>
-                    <p className="luxury-text mb-8 text-lg leading-relaxed italic">"{testimonial.text}"</p>
-                    <div className="flex items-center gap-2 mb-6">
+                    <p className="luxury-text mb-5 text-[15px] leading-7 italic">"{testimonial.text.length > 170 ? `${testimonial.text.slice(0, 170).trimEnd()}...` : testimonial.text}"</p>
+                    <div className="flex items-center gap-1.5 mb-5">
                       {Array.from({ length: testimonial.rating }).map((_, i) => (
                         <motion.div
                           key={i}
@@ -2057,19 +2024,27 @@ export default function Home() {
                           whileInView={{ opacity: 1, scale: 1 }}
                           transition={{ delay: i * 0.05 }}
                         >
-                          <Star key={i} className="w-5 h-5 fill-accent text-accent" />
+                          <Star key={i} className="w-4 h-4 fill-accent text-accent" />
                         </motion.div>
                       ))}
                     </div>
                     <motion.div className="flex items-center gap-3" whileHover={{ x: 5 }}>
-                      <motion.div className="w-14 h-14 bg-gradient-to-br from-accent to-accent/60 rounded-full flex items-center justify-center shadow-lg">
-                        <span className="luxury-heading text-white font-bold text-lg">
-                          {testimonial.name.charAt(0)}
-                        </span>
+                      <motion.div className="h-11 min-w-11 rounded-full border border-[#D9C7A2] bg-[linear-gradient(180deg,#FFFDF8,#F7F1E5)] text-[#4B3428] shadow-[0_2px_8px_rgba(90,55,40,0.12)] flex items-center justify-center">
+                        <div className="h-8 w-8 rounded-full border border-[#C9B692] bg-white flex items-center justify-center">
+                          <span className="text-[10px] font-semibold" style={{ fontFamily: 'var(--font-label)', letterSpacing: '0.08em' }}>
+                            {testimonial.name
+                              .split(' ')
+                              .filter(Boolean)
+                              .slice(0, 2)
+                              .map((part: string) => part[0])
+                              .join('')
+                              .toUpperCase()}
+                          </span>
+                        </div>
                       </motion.div>
                       <div>
-                        <p className="luxury-heading text-sm font-semibold text-primary">{testimonial.name}</p>
-                        <p className="luxury-text text-xs text-muted-foreground flex items-center gap-1"><MapPin className="w-3 h-3" /> {testimonial.location}</p>
+                        <p className="luxury-heading text-sm font-semibold text-[#3A271F]">{testimonial.name}</p>
+                        <p className="luxury-text text-xs text-[#6A594F] flex items-center gap-1"><MapPin className="w-3 h-3" /> {testimonial.location}</p>
                       </div>
                     </motion.div>
                   </CardContent>
@@ -2086,7 +2061,7 @@ export default function Home() {
           >
             <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
               <Link href="/reviews">
-                <Button variant="outline" size="lg" className="border-2 border-primary text-primary hover:bg-primary/5 px-10 py-3 rounded-xl font-semibold">
+                <Button size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground px-10 py-3 rounded-lg font-semibold shadow-xl hover:shadow-2xl transition-all">
                   Read All Reviews
                   <ArrowRight className="ml-2 w-4 h-4" />
                 </Button>
@@ -2096,40 +2071,119 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Booking CTA - Redirects to Reservation Page */}
-      <section className="py-24 bg-gradient-to-br from-primary/5 via-transparent to-accent/5 relative overflow-hidden">
-        <div className="container mx-auto px-4 py-16">
+      {/* Booking CTA - Featured booking form */}
+      <section id="booking" className="py-24 bg-gradient-to-br from-primary/5 via-background to-accent/10 relative overflow-hidden">
+        <div className="absolute inset-0">
+          <div className="absolute -top-24 left-1/4 h-64 w-64 rounded-full bg-accent/10 blur-3xl" />
+          <div className="absolute bottom-0 right-0 h-80 w-80 rounded-full bg-primary/10 blur-3xl" />
+          <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-accent/40 to-transparent" />
+        </div>
+
+        <div className="container mx-auto px-4 py-16 relative z-10">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8 }}
-            className="text-center max-w-4xl mx-auto"
+            className="max-w-5xl mx-auto text-center"
           >
-            <motion.div className="inline-block mb-6">
-              <Badge className="bg-accent/20 text-accent border border-accent/50">
-                Ready to Book?
-              </Badge>
-            </motion.div>
-
-            <h2 className="luxury-heading mb-8" style={{ fontSize: 'clamp(32px, 4vw, 56px)', fontWeight: 400, letterSpacing: '-0.02em', color: '#1A1A1A' }}>
-              Ready to Experience Paradise?
+            <h2 className="luxury-heading mb-5" style={{ fontSize: 'clamp(32px, 4vw, 56px)', fontWeight: 400, letterSpacing: '-0.02em', color: '#1A1A1A' }}>
+              Plan Your Stay
             </h2>
 
-            <p className="luxury-text mb-12" style={{ fontWeight: 300, fontSize: '16px', color: '#4A4A4A', lineHeight: 1.8, maxWidth: '600px', margin: '0 auto 48px' }}>
-              Reserve your dream vacation at MHomes Resort. Choose your dates, select your perfect room, and create unforgettable memories.
+            <p className="luxury-text mb-12" style={{ fontWeight: 300, fontSize: '16px', color: '#4A4A4A', lineHeight: 1.8, maxWidth: '680px', margin: '0 auto 48px' }}>
+              Fill in your stay details and move to reservation in one smooth flow designed for a premium booking experience.
             </p>
 
             <motion.div
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
+              initial={{ opacity: 0, scale: 0.96 }}
+              whileInView={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.7, delay: 0.15 }}
+              className="relative max-w-4xl mx-auto"
+            >
+              <div className="absolute -inset-3 rounded-[2rem] bg-gradient-to-r from-accent/20 via-primary/10 to-accent/20 blur-2xl" />
+              <div className="relative overflow-hidden rounded-[2rem] border border-white/70 bg-[#FDF8EE]/95 shadow-[0_30px_80px_rgba(107,63,42,0.16)] backdrop-blur-xl">
+                <div className="flex items-center gap-2 border-b border-[#E8E4DC] bg-white/70 px-6 py-4">
+                  <span className="h-3 w-3 rounded-full bg-[#E6BDB0]" />
+                  <span className="h-3 w-3 rounded-full bg-[#E7C97E]" />
+                  <span className="h-3 w-3 rounded-full bg-[#B8D5B9]" />
+                </div>
+
+                <div className="grid gap-0 lg:grid-cols-[1.1fr_0.9fr]">
+                  <div className="relative h-[360px] overflow-hidden lg:h-full">
+                    <Image
+                      src="/premium-plus.jpg"
+                      alt="Premium Plus room"
+                      fill
+                      className="object-cover"
+                      sizes="(min-width: 1024px) 50vw, 100vw"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/20 to-transparent" />
+                    <div className="absolute inset-x-0 bottom-0 p-6 text-left text-white sm:p-8">
+                      <p className="luxury-label mb-2 text-[10px] tracking-[0.3em] text-white/80">MHOMES RESORT</p>
+                      <h3 className="luxury-heading text-3xl font-medium text-white sm:text-4xl">Premium Plus Room</h3>
+                      <p className="mt-2 text-sm text-white/80 sm:text-base">Garden view suite with elegant interiors and breakfast included.</p>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col gap-6 bg-white px-6 py-7 text-left sm:px-8 sm:py-8">
+                    <div>
+                      <div className="flex items-start gap-4">
+                        <div>
+                          <p className="luxury-label mb-2 text-[10px] tracking-[0.28em] text-[#8A786E]">BOOKING FORM</p>
+                          <h4 className="luxury-heading text-2xl font-medium text-[#1A1A1A]">Enter your stay details</h4>
+                        </div>
+                      </div>
+
+                      <div className="mt-8 space-y-4">
+                        <div className="rounded-2xl border border-[#E8E4DC] bg-[#FAF8F2] px-4 py-4">
+                          <div className="flex items-center justify-between gap-4">
+                            <div>
+                              <p className="luxury-label mb-1 text-[10px] tracking-[0.24em] text-[#8A786E]">CHECK-IN</p>
+                              <p className="text-base font-semibold text-[#1A1A1A]">23 Apr 2026</p>
+                            </div>
+                            <CalendarDays className="h-5 w-5 text-[#C9A84C]" />
+                          </div>
+                        </div>
+
+                        <div className="rounded-2xl border border-[#E8E4DC] bg-[#FAF8F2] px-4 py-4">
+                          <div className="flex items-center justify-between gap-4">
+                            <div>
+                              <p className="luxury-label mb-1 text-[10px] tracking-[0.24em] text-[#8A786E]">CHECK-OUT</p>
+                              <p className="text-base font-semibold text-[#1A1A1A]">26 Apr 2026</p>
+                            </div>
+                            <ArrowRight className="h-5 w-5 text-[#C9A84C]" />
+                          </div>
+                        </div>
+
+                        <div className="rounded-2xl border border-[#E8E4DC] bg-[#FAF8F2] px-4 py-4">
+                          <div className="flex items-center justify-between gap-4">
+                            <div>
+                              <p className="luxury-label mb-1 text-[10px] tracking-[0.24em] text-[#8A786E]">GUESTS</p>
+                              <p className="text-base font-semibold text-[#1A1A1A]">2 adults • 1 room</p>
+                            </div>
+                            <Users className="h-5 w-5 text-[#C9A84C]" />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+
+            <motion.div
+              whileHover={{ scale: 1.04 }}
+              whileTap={{ scale: 0.98 }}
+              className="mt-10"
             >
               <Link href="/reservation">
                 <Button
                   size="lg"
-                  className="bg-primary hover:bg-primary/90 text-primary-foreground px-10 py-7 text-xl font-bold rounded-2xl shadow-2xl hover:shadow-3xl transition-all inline-flex items-center gap-3"
+                  className="bg-primary hover:bg-primary/90 text-primary-foreground px-8 py-4 text-base font-semibold rounded-lg shadow-xl hover:shadow-2xl transition-all inline-flex items-center gap-2"
                 >
-                  Book Your Stay
-                  <ArrowRight className="w-6 h-6" />
+                  Book Now
+                  <ArrowRight className="w-4 h-4" />
                 </Button>
               </Link>
             </motion.div>
@@ -2149,11 +2203,6 @@ export default function Home() {
             whileInView={{ opacity: 1, y: 0 }}
             className="text-center mb-20"
           >
-            <motion.div className="inline-block mb-4">
-              <Badge className="bg-accent/20 text-accent border border-accent/50">
-                Get in Touch
-              </Badge>
-            </motion.div>
             <h2 className="luxury-heading mb-6" style={{ fontSize: 'clamp(32px, 4vw, 56px)', fontWeight: 400, letterSpacing: '-0.02em', color: '#1A1A1A' }}>
               Get in Touch
             </h2>
@@ -2163,55 +2212,42 @@ export default function Home() {
           </motion.div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-16">
-            <motion.div
-              initial={{ opacity: 0, x: -50 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              className="space-y-12"
-            >
+            <div className="space-y-12">
               <div>
                 <h3 className="luxury-heading text-3xl mb-8 text-primary">Contact Information</h3>
                 <div className="space-y-6">
-                  <motion.div className="flex items-start gap-6 group" whileHover={{ x: 10 }}>
-                    <motion.div
-                      className="w-14 h-14 bg-gradient-to-br from-accent/20 to-accent/5 rounded-full flex items-center justify-center flex-shrink-0 group-hover:bg-gradient-to-br group-hover:from-accent group-hover:to-accent/60 transition-all duration-300 mt-1"
-                      whileHover={{ scale: 1.1 }}
-                    >
+                  <div className="flex items-start gap-6 group">
+                    <div className="w-14 h-14 bg-gradient-to-br from-accent/20 to-accent/5 rounded-full flex items-center justify-center flex-shrink-0 group-hover:bg-gradient-to-br group-hover:from-accent group-hover:to-accent/60 transition-all duration-300 mt-1">
                       <MapPin className="w-6 h-6 text-accent group-hover:text-white transition-colors" />
-                    </motion.div>
+                    </div>
                     <div>
                       <p className="luxury-heading font-bold text-lg text-primary mb-1">Resort Address</p>
                       <p className="luxury-text text-muted-foreground text-lg">Madurai, Tamil Nadu</p>
                     </div>
-                  </motion.div>
+                  </div>
 
-                  <motion.div className="flex items-start gap-6 group" whileHover={{ x: 10 }}>
-                    <motion.div
-                      className="w-14 h-14 bg-gradient-to-br from-accent/20 to-accent/5 rounded-full flex items-center justify-center flex-shrink-0 group-hover:bg-gradient-to-br group-hover:from-accent group-hover:to-accent/60 transition-all duration-300 mt-1"
-                      whileHover={{ scale: 1.1 }}
-                    >
+                  <div className="flex items-start gap-6 group">
+                    <div className="w-14 h-14 bg-gradient-to-br from-accent/20 to-accent/5 rounded-full flex items-center justify-center flex-shrink-0 group-hover:bg-gradient-to-br group-hover:from-accent group-hover:to-accent/60 transition-all duration-300 mt-1">
                       <Phone className="w-6 h-6 text-accent group-hover:text-white transition-colors" />
-                    </motion.div>
+                    </div>
                     <div>
                       <p className="luxury-heading font-bold text-lg text-primary mb-1">Phone</p>
                       <p className="luxury-text text-muted-foreground text-lg">+91-9791035346</p>
                     </div>
-                  </motion.div>
+                  </div>
 
-                  <motion.div className="flex items-start gap-6 group" whileHover={{ x: 10 }}>
-                    <motion.div
-                      className="w-14 h-14 bg-gradient-to-br from-accent/20 to-accent/5 rounded-full flex items-center justify-center flex-shrink-0 group-hover:bg-gradient-to-br group-hover:from-accent group-hover:to-accent/60 transition-all duration-300 mt-1"
-                      whileHover={{ scale: 1.1 }}
-                    >
+                  <div className="flex items-start gap-6 group">
+                    <div className="w-14 h-14 bg-gradient-to-br from-accent/20 to-accent/5 rounded-full flex items-center justify-center flex-shrink-0 group-hover:bg-gradient-to-br group-hover:from-accent group-hover:to-accent/60 transition-all duration-300 mt-1">
                       <Mail className="w-6 h-6 text-accent group-hover:text-white transition-colors" />
-                    </motion.div>
+                    </div>
                     <div>
                       <p className="luxury-heading font-bold text-lg text-primary mb-1">Email</p>
                       <p className="luxury-text text-muted-foreground text-lg">karthikeyan@mhomes.co.in</p>
                     </div>
-                  </motion.div>
+                  </div>
                 </div>
               </div>
-            </motion.div>
+            </div>
 
             <motion.div
               initial={{ opacity: 0, x: 50 }}
@@ -2234,136 +2270,99 @@ export default function Home() {
       </section>
 
       {/* Footer */}
-      <footer className="bg-gradient-to-b from-primary to-primary/95 text-white py-8 relative overflow-hidden">
-        {/* Decorative elements */}
-        <div className="absolute inset-0 opacity-10">
-          <motion.div
-            className="absolute top-0 left-0 w-96 h-96 bg-accent rounded-full blur-3xl"
-            animate={{ y: [0, 40, 0], x: [0, 20, 0] }}
-            transition={{ duration: 20, repeat: Infinity }}
-          />
-        </div>
-
-        <div className="container mx-auto px-4 relative z-10">
-          {/* Footer Logo - Top Left */}
-          <div className="mb-6">
-            <div
-              className="flex items-center justify-start overflow-hidden"
-              style={{ transform: 'scale(1.1)' }}
-            >
+      <footer className="bg-primary text-white relative">
+        {/* Gradient Background */}
+        <div className="absolute inset-0 bg-gradient-to-b from-primary via-primary to-primary/95 opacity-90" />
+        
+        <div className="relative z-10 container mx-auto px-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 py-16">
+            {/* Brand Column */}
+            <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} className="-mt-16 -ml-6">
               <Image
-                src="/mhomes-logo.png"
-                alt="MHomes Resort Logo"
-                width={180}
-                height={180}
-                priority
-                style={{ width: 'auto' }}
-                className="object-contain drop-shadow-lg"
+                src="/MHOMES-logo.png"
+                alt="MHOMES Resort"
+                width={160}
+                height={160}
+                className="h-40 w-auto -mb-6 object-contain"
               />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
-            <motion.div
-              className="md:col-span-2"
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-            >
-              <p className="luxury-text text-white/80 mb-4 leading-relaxed text-base">
-                Experience luxury redefined at <span className="font-bold text-white">MHomes Resort</span>, where every moment becomes a treasured memory
-                in our tropical paradise.
+              <h2 className="luxury-heading text-2xl font-bold text-white mb-3 pl-8">MHOMES Resort</h2>
+              <p className="luxury-text text-white/80 text-sm leading-relaxed mb-6 pl-8">
+                Experience luxury redefined in the heart of Madurai. Premium accommodations designed for unforgettable memories.
               </p>
-              <div className="flex items-center gap-4 flex-wrap">
-                <motion.div whileHover={{ scale: 1.05 }}>
-                  <Badge variant="outline" className="border-white text-white bg-white/10 hover:bg-white/20 transition-all">
-                    <Award className="w-3 h-3 mr-2" />
-                    5-Star Resort
-                  </Badge>
-                </motion.div>
-                <motion.div whileHover={{ scale: 1.05 }}>
-                  <Badge variant="outline" className="border-white text-white bg-white/10 hover:bg-white/20 transition-all">
-                    <Shield className="w-3 h-3 mr-2" />
-                    Luxury Certified
-                  </Badge>
-                </motion.div>
-              </div>
             </motion.div>
 
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 }}
-            >
-              <h4 className="luxury-heading text-lg mb-4 font-bold">Quick Links</h4>
-              <div className="space-y-2">
-                {navigationItems.slice(0, 4).map((item) => (
-                  <motion.div key={item.name} whileHover={{ x: 5 }}>
-                    <Link
-                      href={item.href}
-                      className="luxury-text text-white/80 hover:text-accent transition-colors font-semibold text-sm"
-                    >
-                      {item.name}
-                    </Link>
-                  </motion.div>
+            {/* Explore Column */}
+            <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.1 }}>
+              <h3 className="luxury-heading text-lg font-bold text-white mb-8 uppercase tracking-wider">Explore</h3>
+              <nav className="space-y-4 flex flex-col">
+                {[                  { name: 'Home', href: '/#home' },
+                  { name: 'About Us', href: '/#story' },
+                  { name: 'Rooms', href: '/#accommodations' },
+                  { name: 'Gallery', href: '/#gallery' },
+                  { name: 'Guest Reviews', href: '/reviews' },
+                ].map((link) => (
+                  <Link key={link.name} href={link.href} className="luxury-text text-white/80 hover:text-accent text-sm font-medium transition-colors duration-300 block">
+                    {link.name}
+                  </Link>
                 ))}
-              </div>
+              </nav>
             </motion.div>
 
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-            >
-              <h4 className="luxury-heading text-lg mb-4 font-bold">More Info</h4>
-              <div className="space-y-2">
-                {navigationItems.slice(4).map((item) => (
-                  <motion.div key={item.name} whileHover={{ x: 5 }}>
-                    <Link
-                      href={item.href}
-                      className="luxury-text text-white/80 hover:text-accent transition-colors font-semibold text-sm"
-                    >
-                      {item.name}
-                    </Link>
-                  </motion.div>
+            {/* Services Column */}
+            <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.2 }}>
+              <h3 className="luxury-heading text-lg font-bold text-white mb-8 uppercase tracking-wider">Services</h3>
+              <nav className="space-y-4 flex flex-col">
+                {[
+                  { name: 'Book Now', href: '/reservation' },
+                  { name: 'Contact Us', href: '/#contact' },
+                  { name: 'Room Types', href: '/#accommodations' },
+                ].map((link) => (
+                  <Link key={link.name} href={link.href} className="luxury-text text-white/80 hover:text-accent text-sm font-medium transition-colors duration-300 block">
+                    {link.name}
+                  </Link>
                 ))}
+              </nav>
+            </motion.div>
+
+            {/* Contact Column */}
+            <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.3 }}>
+              <h3 className="luxury-heading text-lg font-bold text-white mb-8 uppercase tracking-wider">Contact</h3>
+              <div className="space-y-6">
+                <div>
+                  <p className="luxury-text text-white/70 text-xs uppercase tracking-wide mb-2">Address</p>
+                  <p className="luxury-heading text-white text-sm font-medium">Madurai, Tamil Nadu</p>
+                </div>
+
+                <div>
+                  <p className="luxury-text text-white/70 text-xs uppercase tracking-wide mb-2">Phone</p>
+                  <a href="tel:+919791035346" className="luxury-heading text-accent hover:text-accent/80 text-sm font-medium transition-colors">
+                    +91 9791 035346
+                  </a>
+                </div>
+
+                <div>
+                  <p className="luxury-text text-white/70 text-xs uppercase tracking-wide mb-2">Email</p>
+                  <a href="mailto:karthikeyan@mhomes.co.in" className="luxury-heading text-accent hover:text-accent/80 text-sm font-medium transition-colors break-all">
+                    karthikeyan@mhomes.co.in
+                  </a>
+                </div>
               </div>
             </motion.div>
           </div>
 
-          <motion.div
-            initial={{ scaleX: 0 }}
-            whileInView={{ scaleX: 1 }}
-            transition={{ duration: 0.8 }}
-            className="origin-left"
-          >
-            <Separator className="my-4 bg-white/20" />
-          </motion.div>
+          {/* Divider */}
+          <div className="h-px bg-white/15" />
 
-          <motion.div
-            className="flex flex-col md:flex-row items-center justify-between"
-            initial={{ opacity: 0 }}
-            whileInView={{ opacity: 1 }}
-            transition={{ delay: 0.3 }}
-          >
-            <p className="luxury-text text-white/60 text-xs font-semibold">
-              © 2025 <span className="text-accent">MHomes Resort</span>. All rights reserved. | Crafted with luxury and elegance
-            </p>
-            <div className="flex items-center gap-8 mt-4 md:mt-0">
-              <motion.div whileHover={{ scale: 1.1, y: -3 }}>
-                <Link href="#" className="luxury-text text-white/60 hover:text-accent transition-all font-semibold text-sm">
-                  Privacy Policy
-                </Link>
-              </motion.div>
-              <motion.div whileHover={{ scale: 1.1, y: -3 }}>
-                <Link href="#" className="luxury-text text-white/60 hover:text-accent transition-all font-semibold text-sm">
-                  Terms of Service
-                </Link>
-              </motion.div>
-              <motion.div whileHover={{ scale: 1.1, y: -3 }}>
-                <Link href="#" className="luxury-text text-white/60 hover:text-accent transition-all font-semibold text-sm">
-                  Cookie Policy
-                </Link>
-              </motion.div>
+          {/* Bottom Bar */}
+          <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} transition={{ duration: 0.5, delay: 0.4 }} className="py-8">
+            <div className="flex flex-col md:flex-row items-center justify-center gap-6">
+              <div className="flex gap-6 flex-wrap justify-center">
+                <a href="#" className="luxury-text text-white/70 hover:text-accent text-xs font-medium transition-colors">Terms & Conditions</a>
+                <span className="text-white/20">•</span>
+                <a href="#" className="luxury-text text-white/70 hover:text-accent text-xs font-medium transition-colors">Cookie Policy</a>
+                <span className="text-white/20">•</span>
+                <a href="#" className="luxury-text text-white/70 hover:text-accent text-xs font-medium transition-colors">Sitemap</a>
+              </div>
             </div>
           </motion.div>
         </div>

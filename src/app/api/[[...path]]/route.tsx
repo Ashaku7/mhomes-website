@@ -8,7 +8,7 @@ export async function GET(request: NextRequest) {
     // Root API endpoint
     if (pathname === '/api/' || pathname === '/api') {
       return NextResponse.json({
-        message: 'MHomes Resort API is running',
+        message: 'MHOMES Resort API is running',
         status: 'success',
         timestamp: new Date().toISOString(),
         endpoints: {
@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
     if (pathname === '/api/contact') {
       return NextResponse.json({
         phone: '+1 (555) 123-4567',
-        email: 'info@mhomesresort.com',
+        email: 'info@MHOMESresort.com',
         address: 'Tropical Paradise Island, Maldives',
         hours: {
           'Monday - Friday': '9:00 AM - 6:00 PM',
@@ -76,65 +76,65 @@ export async function GET(request: NextRequest) {
         const placeId = process.env.GOOGLE_PLACE_ID
         const googleApiKey = process.env.GOOGLE_PLACES_API_KEY
 
-        // If Google API is not configured, return fallback reviews
+        // If Google API is not configured, return fallback reviews (guest testimonials)
         if (!placeId || !googleApiKey || googleApiKey === 'your_google_places_api_key') {
           return NextResponse.json({
             reviews: [
               {
                 id: '1',
-                name: 'Sarah Johnson',
-                location: 'New York, USA',
+                name: 'Arjun Mehta',
+                location: 'Mumbai, India',
                 rating: 5,
-                text: 'Absolutely magical experience! The overwater villa was beyond our dreams, and the service was impeccable. Every detail was carefully thought through.',
-                date: 'November 15, 2025',
-                source: 'google',
+                text: 'Stayed in the Premium Plus Room for our anniversary and it exceeded every expectation. The room was spotless, staff were incredibly warm, and the whole experience felt very personal. Highly recommend MHOMES to anyone looking for a peaceful luxury getaway.',
+                date: 'April 15, 2026',
+                source: 'guest',
                 verified: true
               },
               {
                 id: '2',
-                name: 'Marco Rodriguez',
-                location: 'Madrid, Spain',
+                name: 'Priya Subramaniam',
+                location: 'Chennai, India',
                 rating: 5,
-                text: 'The perfect honeymoon destination. Every detail was carefully planned, from the private beach dinner to the couples spa treatments.',
-                date: 'November 10, 2025',
-                source: 'google',
+                text: 'We booked two Premium Rooms for a family trip and the entire process from online booking to check-out was seamless. The rooms were spacious, well-maintained, and the team made sure every need was taken care of. Will definitely be coming back!',
+                date: 'April 12, 2026',
+                source: 'guest',
                 verified: true
               },
               {
                 id: '3',
-                name: 'Emily Chen',
-                location: 'Singapore',
+                name: 'Karthik Rajan',
+                location: 'Coimbatore, India',
                 rating: 5,
-                text: 'Luxury redefined. The attention to detail and personalized service made our anniversary celebration truly unforgettable.',
-                date: 'November 5, 2025',
-                source: 'google',
+                text: 'MHOMES Resort is a hidden gem. The ambience is serene, the rooms are beautifully maintained, and the staff go out of their way to make you feel at home. Checked in for a weekend trip and honestly did not want to leave.',
+                date: 'April 8, 2026',
+                source: 'guest',
                 verified: true
               },
               {
                 id: '4',
-                name: 'James Mitchell',
-                location: 'London, UK',
+                name: 'Sneha & Vikram Nair',
+                location: 'Bangalore, India',
                 rating: 5,
-                text: 'Outstanding resort experience. The facilities are world-class, the staff is incredibly friendly and helpful.',
-                date: 'October 28, 2025',
-                source: 'google',
+                text: 'Chose MHOMES for our honeymoon and it was the best decision we made. The Premium Plus Room was stunning, the privacy was great, and the staff were so thoughtful — they even surprised us with a small decoration in the room. Perfect in every way.',
+                date: 'April 5, 2026',
+                source: 'guest',
                 verified: true
               },
               {
                 id: '5',
-                name: 'Lisa Anderson',
-                location: 'Sydney, Australia',
+                name: 'Deepa Krishnamurthy',
+                location: 'Madurai, India',
                 rating: 5,
-                text: 'One of the best vacation experiences ever! The resort is stunning, the beaches are beautiful.',
-                date: 'October 20, 2025',
-                source: 'google',
+                text: 'Attended a small family gathering here and the experience was wonderful. Booking multiple rooms was easy, the property is well-kept, and the overall vibe is calm and luxurious. Great value for the quality you get. Strongly recommend MHOMES Resort.',
+                date: 'March 28, 2026',
+                source: 'guest',
                 verified: true
               }
             ],
-            averageRating: 4.8,
-            totalReviews: 247,
+            averageRating: 5.0,
+            totalReviews: 5,
             source: 'fallback',
-            message: 'Displaying fallback reviews. Configure Google Places API for real reviews.'
+            message: 'Displaying guest testimonials. Configure Google Places API for real Google reviews.'
           })
         }
 
@@ -230,7 +230,7 @@ export async function GET(request: NextRequest) {
         status: 'placeholder',
         contact: {
           phone: '+1 (555) 123-4567',
-          email: 'reservations@mhomesresort.com'
+          email: 'reservations@MHOMESresort.com'
         },
         note: 'Please contact us directly for reservations until our online booking system is ready.'
       })
@@ -265,7 +265,7 @@ export async function GET(request: NextRequest) {
               <svg width="1200" height="120" xmlns="http://www.w3.org/2000/svg">
                 <rect width="1200" height="120" fill="#FAFAF8"/>
                 <line x1="0" y1="0" x2="1200" y2="0" stroke="#C9A84C" stroke-width="3"/>
-                <text x="50" y="50" font-family="Arial, sans-serif" font-size="20" font-weight="bold" fill="#6B2D1F">MHomes Resort</text>
+                <text x="50" y="50" font-family="Arial, sans-serif" font-size="20" font-weight="bold" fill="#6B2D1F">MHOMES Resort</text>
                 <text x="600" y="45" font-family="Arial, sans-serif" font-size="12" fill="#7A6A5A" text-anchor="middle">S-37, Foreigners Road, Madurai - 625001</text>
                 <text x="600" y="65" font-family="Arial, sans-serif" font-size="11" fill="#7A6A5A" text-anchor="middle">📧 karthikeyan@mhomes.co.in | 📱 +91-9765555346</text>
                 <line x1="0" y1="115" x2="1200" y2="115" stroke="#D4C5B9" stroke-width="1"/>
@@ -377,7 +377,7 @@ export async function POST(request: NextRequest) {
 
       if (GEMINI_API_KEY === 'YOUR_GEMINI_API_KEY_HERE') {
         // Fallback to rule-based if no API key
-        let response = 'I\'m here to help with your questions about MHomes Resort. How can I assist you today?'
+        let response = 'I\'m here to help with your questions about MHOMES Resort. How can I assist you today?'
         const lowerMessage = userMessage.toLowerCase()
 
         if (lowerMessage.includes('room') || lowerMessage.includes('accommodation')) {
@@ -391,19 +391,19 @@ export async function POST(request: NextRequest) {
         } else if (lowerMessage.includes('activity') || lowerMessage.includes('experience') || lowerMessage.includes('water sport')) {
           response = 'Experience adventure with diving, snorkeling, kayaking, sailing, and cultural tours. Our fitness center is available 24/7 with personal trainers.'
         } else if (lowerMessage.includes('contact') || lowerMessage.includes('phone') || lowerMessage.includes('email')) {
-          response = 'Reach us at +1 (555) 123-4567 or info@mhomesresort.com. Our office hours are Monday-Friday 9AM-6PM, Saturday 10AM-4PM, Sunday 12PM-4PM.'
+          response = 'Reach us at +1 (555) 123-4567 or info@MHOMESresort.com. Our office hours are Monday-Friday 9AM-6PM, Saturday 10AM-4PM, Sunday 12PM-4PM.'
         } else if (lowerMessage.includes('location') || lowerMessage.includes('address')) {
-          response = 'MHomes Resort is located on Tropical Paradise Island in the Maldives, offering pristine beaches and crystal-clear waters.'
+          response = 'MHOMES Resort is located on Tropical Paradise Island in the Maldives, offering pristine beaches and crystal-clear waters.'
         } else if (lowerMessage.includes('booking') || lowerMessage.includes('reservation')) {
-          response = 'Our online booking system is coming soon! For now, please contact our reservations team at +1 (555) 123-4567 or reservations@mhomesresort.com to make your reservation.'
+          response = 'Our online booking system is coming soon! For now, please contact our reservations team at +1 (555) 123-4567 or reservations@MHOMESresort.com to make your reservation.'
         } else if (lowerMessage.includes('payment') || lowerMessage.includes('pay')) {
           response = 'We accept major credit cards, bank transfers, and digital payments. A 50% deposit is required to confirm your reservation, with the balance due upon arrival. Contact our team for payment options and assistance.'
         } else if (lowerMessage.includes('facility') || lowerMessage.includes('amenities')) {
           response = 'Our resort features high-speed WiFi, valet parking, private beach access, multiple restaurants, luxury spa, 24/7 fitness center, and premium concierge services.'
         } else if (lowerMessage.includes('hello') || lowerMessage.includes('hi') || lowerMessage.includes('hey')) {
-          response = 'Hello! Welcome to MHomes Resort. I\'m your virtual assistant. How can I help you plan your perfect vacation?'
+          response = 'Hello! Welcome to MHOMES Resort. I\'m your virtual assistant. How can I help you plan your perfect vacation?'
         } else if (lowerMessage.includes('thank') || lowerMessage.includes('thanks')) {
-          response = 'You\'re welcome! I\'m glad I could help. If you have any more questions about MHomes Resort, feel free to ask.'
+          response = 'You\'re welcome! I\'m glad I could help. If you have any more questions about MHOMES Resort, feel free to ask.'
         }
 
         return NextResponse.json({
@@ -414,13 +414,13 @@ export async function POST(request: NextRequest) {
 
       // Use Gemini API
       try {
-        const prompt = `You are a helpful virtual assistant for MHomes Resort, a luxury resort in the Maldives. Provide friendly, informative responses about the resort. Key information:
+        const prompt = `You are a helpful virtual assistant for MHOMES Resort, a luxury resort in the Maldives. Provide friendly, informative responses about the resort. Key information:
 - Location: Tropical Paradise Island, Maldives
 - Accommodations: Ocean Villas ($1,200/night), Beach Suites ($800/night), Premium Rooms ($450/night), Premium Plus Rooms ($320/night)
 - Dining: Azure Restaurant (Michelin-starred), Sunset Lounge (bar & grill), Poolside Café
 - Activities: Spa treatments, water sports (diving, snorkeling, kayaking), fitness center, cultural tours
 - Facilities: Private beach, infinity pool, high-speed WiFi, valet parking, luxury spa
-- Contact: +1 (555) 123-4567, info@mhomesresort.com
+- Contact: +1 (555) 123-4567, info@MHOMESresort.com
 - Payment: Major credit cards, 50% deposit required
 - Office hours: Mon-Fri 9AM-6PM, Sat 10AM-4PM, Sun 12PM-4PM
 

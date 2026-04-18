@@ -7,7 +7,7 @@ const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
 async function main() {
-    console.log('Seeding MHomes database...\n');
+    console.log('Seeding MHOMES database...\n');
 
     // ── 1. Rooms (6 physical rooms) ──────────────────────────
     console.log('Creating rooms...');

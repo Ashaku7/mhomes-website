@@ -1321,7 +1321,7 @@ export default function AdminPage() {
         justifyContent: 'center',
         gap: '16px',
       }}>
-        <img src="/mhomes-logo.png" alt="MHomes" style={{ height: '48px' }} />
+        <img src="/MHOMES-logo.png" alt="MHOMES" style={{ height: '48px' }} />
         <Loader2 className="w-6 h-6 animate-spin" style={{ color: '#6B3F2A' }} />
         <p style={{
           color: '#718096',
@@ -1345,7 +1345,7 @@ export default function AdminPage() {
         justifyContent: 'center',
         gap: '16px'
       }}>
-        <img src="/mhomes-logo.png" alt="MHomes" style={{ height: '48px' }} />
+        <img src="/MHOMES-logo.png" alt="MHOMES" style={{ height: '48px' }} />
         <h2 style={{
           fontFamily: 'var(--font-heading)',
           color: '#1A202C',
@@ -1538,7 +1538,7 @@ export default function AdminPage() {
         {/* Logo */}
         <div style={{ paddingLeft: '0px', marginLeft: '-24px', marginBottom: '2px', minHeight: '100px', display: 'flex', alignItems: 'flex-start' }}>
           <img
-            src="/mhomes-logo.png"
+            src="/MHOMES-logo.png"
             alt="Serenity Resort"
             style={{
               height: '150px',

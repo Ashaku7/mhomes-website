@@ -285,7 +285,7 @@ const InvoicePrintView = ({ bookingId }: InvoicePrintViewProps) => {
         {/* ═══ HEADER SECTION ═══ */}
         <div style={{ textAlign: 'center', marginBottom: '10px', borderBottom: '2px solid #C9A84C', paddingBottom: '6px' }}>
           <h1 style={{ fontSize: '24px', fontWeight: 'bold', fontStyle: 'italic', color: '#6B2D1F', margin: '0 0 2px 0' }}>Guest Invoice</h1>
-          <p style={{ fontSize: '9px', color: '#8B6914', margin: '0', fontWeight: 500 }}>Thank you for choosing MHomes Resort — A Sanctuary of Luxury</p>
+          <p style={{ fontSize: '9px', color: '#8B6914', margin: '0', fontWeight: 500 }}>Thank you for choosing MHOMES Resort — A Sanctuary of Luxury</p>
         </div>
 
         {/* ═══ INVOICE DETAILS GRID ═══ */}
@@ -578,7 +578,7 @@ const InvoicePrintView = ({ bookingId }: InvoicePrintViewProps) => {
             color: '#8B6914',
             margin: '0'
           }}>
-            For any queries, contact us at: karikklayer@mhomes.co.in | +91-6706555346
+            For any queries, contact us at: karikklayer@MHOMES.co.in | +91-6706555346
           </p>
         </div>
       </div>
