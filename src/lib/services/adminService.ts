@@ -34,6 +34,7 @@ const formatBooking = (b: any) => ({
         amount: parseFloat(p.amount.toString()),
         paymentMethod: p.paymentMethod,
         paymentStatus: p.paymentStatus,
+        transactionId: p.transactionId,
     })),
 })
 
@@ -511,13 +512,15 @@ const updateBookingStatus = async (id: number, newStatus: string, extraExpense?:
                     let extraTotal = 0
                     
                     expenses.forEach((exp: string) => {
-                        // Format: "travel-250" or "parking-100" etc
-                        const parts = exp.split('-')
-                        if (parts.length === 2) {
-                            const amount = parseFloat(parts[1])
+                        // Format: "label-250". Parse from last dash to support labels with dashes.
+                        const lastDashIndex = exp.lastIndexOf('-')
+                        if (lastDashIndex > 0) {
+                            const label = exp.slice(0, lastDashIndex).trim()
+                            const amountStr = exp.slice(lastDashIndex + 1).replace(/[^0-9.]/g, '')
+                            const amount = parseFloat(amountStr)
                             if (!isNaN(amount)) {
                                 extraTotal += amount
-                                console.log(`[Admin Service]   + ${parts[0]}: ₹${amount}`)
+                                console.log(`[Admin Service]   + ${label}: ₹${amount}`)
                             }
                         }
                     })
@@ -656,7 +659,7 @@ const checkInGuest = async (bookingId: number, data: any) => {
 
     // If rooms changed, update bookingRooms and recalculate price
     let newTotalAmount = parseFloat(booking.totalAmount.toString())
-    let roomsUpdateData: any = {}
+    const roomsUpdateData: any = {}
 
     if (isRoomSelectionChanged) {
         console.log(`[checkInGuest] 🗑️  Deleting old room assignments...`)

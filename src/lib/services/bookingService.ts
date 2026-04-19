@@ -1,5 +1,5 @@
-import { prisma } from '@/lib/prisma';
-import { generateBookingReference } from '@/lib/utils/generateBookingReference';
+import { prisma } from "@/lib/prisma";
+import { generateBookingReference } from "@/lib/utils/generateBookingReference";
 
 interface SearchRoomsParams {
   checkIn: string;
@@ -74,9 +74,12 @@ interface GetBookingsParams {
 }
 
 class BookingServiceError extends Error {
-  constructor(public statusCode: number, message: string) {
+  constructor(
+    public statusCode: number,
+    message: string,
+  ) {
     super(message);
-    this.name = 'BookingServiceError';
+    this.name = "BookingServiceError";
   }
 }
 
@@ -87,118 +90,165 @@ function createError(statusCode: number, message: string): BookingServiceError {
 function normalizePaymentMethod(method: string): string | null {
   if (!method) return null;
   const normalized = method.toLowerCase();
-  if (normalized === 'upi') return 'UPI';
-  if (normalized === 'card') return 'card';
-  if (normalized === 'cash') return 'cash';
-  if (normalized === 'gateway') return 'gateway';
+  if (normalized === "upi") return "UPI";
+  if (normalized === "card") return "card";
+  if (normalized === "cash") return "cash";
+  if (normalized === "gateway") return "gateway";
   return null;
 }
 
 function validateDates(checkIn: string, checkOut: string) {
-  const ciDate = new Date(checkIn + 'T00:00:00Z');
-  const coDate = new Date(checkOut + 'T00:00:00Z');
-  
+  const ciDate = new Date(checkIn + "T00:00:00Z");
+  const coDate = new Date(checkOut + "T00:00:00Z");
+
   const today = new Date();
   today.setUTCHours(0, 0, 0, 0);
 
   if (isNaN(ciDate.getTime()) || isNaN(coDate.getTime())) {
-    throw createError(400, 'Invalid date format. Use YYYY-MM-DD.');
+    throw createError(400, "Invalid date format. Use YYYY-MM-DD.");
   }
   if (ciDate < today) {
-    throw createError(400, 'Check-in date must be today or in the future.');
+    throw createError(400, "Check-in date must be today or in the future.");
   }
   if (coDate <= ciDate) {
-    throw createError(400, 'Check-out date must be after check-in date.');
+    throw createError(400, "Check-out date must be after check-in date.");
   }
 
   return { ci: checkIn, co: checkOut, ciDate, coDate };
 }
 
-function calculateNights(checkIn: string | Date, checkOut: string | Date): number {
-  const ciDate = typeof checkIn === 'string' 
-    ? new Date(checkIn + 'T00:00:00Z')
-    : checkIn;
-  const coDate = typeof checkOut === 'string'
-    ? new Date(checkOut + 'T00:00:00Z')
-    : checkOut;
+function calculateNights(
+  checkIn: string | Date,
+  checkOut: string | Date,
+): number {
+  const ciDate =
+    typeof checkIn === "string" ? new Date(checkIn + "T00:00:00Z") : checkIn;
+  const coDate =
+    typeof checkOut === "string" ? new Date(checkOut + "T00:00:00Z") : checkOut;
   const diff = coDate.getTime() - ciDate.getTime();
   return Math.ceil(diff / (1000 * 60 * 60 * 24));
 }
+
+type RoomRow = Awaited<ReturnType<typeof prisma.room.findMany>>[number];
 
 export const searchAvailableRooms = async (params: SearchRoomsParams) => {
   try {
     const { checkIn, checkOut, roomType, roomCount } = params;
 
     if (!checkIn || !checkOut || !roomType || roomCount === undefined) {
-      throw createError(400, 'checkIn, checkOut, roomType, and roomCount are required.');
+      throw createError(
+        400,
+        "checkIn, checkOut, roomType, and roomCount are required.",
+      );
     }
 
-    const validRoomTypes = ['premium', 'premium_plus'];
+    const validRoomTypes = ["premium", "premium_plus"];
     if (!validRoomTypes.includes(roomType)) {
       throw createError(400, 'roomType must be "premium" or "premium_plus".');
     }
 
     const count = parseInt(String(roomCount));
     if (isNaN(count) || count < 1 || count > 6) {
-      throw createError(400, 'roomCount must be a positive integer between 1 and 6.');
+      throw createError(
+        400,
+        "roomCount must be a positive integer between 1 and 6.",
+      );
     }
 
     const { ci, co, ciDate, coDate } = validateDates(checkIn, checkOut);
     const nights = calculateNights(ci, co);
 
-  const bookedRoomIds = await prisma.bookingRoom.findMany({
-    where: {
-      booking: {
-        bookingStatus: { in: ['pending', 'confirmed', 'checked_in', 'checked_out'] },
-        checkIn: { lt: coDate },
-        checkOut: { gt: ciDate },
+    const bookedRoomIds = await prisma.bookingRoom.findMany({
+      where: {
+        booking: {
+          bookingStatus: {
+            in: ["pending", "confirmed", "checked_in", "checked_out"],
+          },
+          checkIn: { lt: coDate },
+          checkOut: { gt: ciDate },
+        },
       },
-    },
-    select: { roomId: true },
-  });
+      select: { roomId: true },
+    });
 
-  const bookedIds = bookedRoomIds.map((br) => br.roomId);
+    const bookedIds = bookedRoomIds.map((br) => br.roomId);
 
-  const totalRooms = await prisma.room.count();
-  const activeRooms = await prisma.room.count({
-    where: { status: 'active' },
-  });
+    const totalRooms = await prisma.room.count();
+    const activeRooms = await prisma.room.count({
+      where: { status: "active" },
+    });
 
-  const allAvailableRooms = await prisma.room.findMany({
-    where: {
-      status: 'active',
-      id: { notIn: bookedIds.length > 0 ? bookedIds : [] },
-    },
-  });
-  
-  const availablePremiumPlus = allAvailableRooms
-    .filter(r => r.roomType === 'premium_plus')
-    .sort((a, b) => parseInt(a.roomNumber) - parseInt(b.roomNumber));
+    const allAvailableRooms = await prisma.room.findMany({
+      where: {
+        status: "active",
+        id: { notIn: bookedIds.length > 0 ? bookedIds : [] },
+      },
+    });
 
-  const availablePremium = allAvailableRooms
-    .filter(r => r.roomType === 'premium')
-    .sort((a, b) => parseInt(a.roomNumber) - parseInt(b.roomNumber));
+    const availablePremiumPlus = allAvailableRooms
+      .filter((r) => r.roomType === "premium_plus")
+      .sort((a, b) => parseInt(a.roomNumber) - parseInt(b.roomNumber));
 
-  let assignedRooms = [];
+    const availablePremium = allAvailableRooms
+      .filter((r) => r.roomType === "premium")
+      .sort((a, b) => parseInt(a.roomNumber) - parseInt(b.roomNumber));
 
-  if (roomType === 'premium_plus') {
-    assignedRooms = availablePremiumPlus.slice(0, count);
-  } else if (roomType === 'premium') {
-    assignedRooms = availablePremium.slice(0, count);
-  }
+    let assignedRooms: RoomRow[] = [];
 
-  const totalPerNight = assignedRooms.reduce((sum, room) => sum + parseFloat(String(room.pricePerNight)), 0);
-  const totalAmount = totalPerNight * nights;
+    if (roomType === "premium_plus") {
+      assignedRooms = availablePremiumPlus.slice(0, count);
+    } else if (roomType === "premium") {
+      assignedRooms = availablePremium.slice(0, count);
+    }
 
-  if (assignedRooms.length < count) {
-    const availableCount = assignedRooms.length;
+    const totalPerNight = assignedRooms.reduce(
+      (sum, room) => sum + parseFloat(String(room.pricePerNight)),
+      0,
+    );
+    const totalAmount = totalPerNight * nights;
+
+    if (assignedRooms.length < count) {
+      const availableCount = assignedRooms.length;
+      return {
+        available: false,
+        success: false,
+        rooms: [],
+        assignedRooms: [],
+        totalAmount: 0,
+        message: `Only ${availableCount} ${roomType} room(s) available. You requested ${count}.`,
+        _debug: {
+          totalRoomsInDb: totalRooms,
+          activeRoomsInDb: activeRooms,
+          bookedRoomIds: bookedIds,
+          availablePremiumPlus: availablePremiumPlus.length,
+          availablePremium: availablePremium.length,
+          requestedCount: count,
+          requestedType: roomType,
+        },
+      };
+    }
+
     return {
-      available: false,
-      success: false,
-      rooms: [],
-      assignedRooms: [],
-      totalAmount: 0,
-      message: `Only ${availableCount} ${roomType} room(s) available. You requested ${count}.`,
+      available: true,
+      success: true,
+      rooms: assignedRooms.map((r) => ({
+        id: r.id,
+        roomNumber: r.roomNumber,
+        roomType: r.roomType,
+        pricePerNight: parseFloat(String(r.pricePerNight)),
+        maxGuests: r.maxGuests,
+      })),
+      assignedRooms: assignedRooms.map((r) => ({
+        id: r.id,
+        roomNumber: r.roomNumber,
+        roomType: r.roomType,
+        pricePerNight: parseFloat(String(r.pricePerNight)),
+      })),
+      checkIn: checkIn,
+      checkOut: checkOut,
+      nights: nights,
+      totalPerNight: totalPerNight,
+      totalAmount: parseFloat(totalAmount.toFixed(2)),
       _debug: {
         totalRoomsInDb: totalRooms,
         activeRoomsInDb: activeRooms,
@@ -207,47 +257,14 @@ export const searchAvailableRooms = async (params: SearchRoomsParams) => {
         availablePremium: availablePremium.length,
         requestedCount: count,
         requestedType: roomType,
-      }
+      },
     };
-  }
-
-  return {
-    available: true,
-    success: true,
-    rooms: assignedRooms.map(r => ({
-      id: r.id,
-      roomNumber: r.roomNumber,
-      roomType: r.roomType,
-      pricePerNight: parseFloat(String(r.pricePerNight)),
-      maxGuests: r.maxGuests,
-    })),
-    assignedRooms: assignedRooms.map(r => ({
-      id: r.id,
-      roomNumber: r.roomNumber,
-      roomType: r.roomType,
-      pricePerNight: parseFloat(String(r.pricePerNight)),
-    })),
-    checkIn: checkIn,
-    checkOut: checkOut,
-    nights: nights,
-    totalPerNight: totalPerNight,
-    totalAmount: parseFloat(totalAmount.toFixed(2)),
-    _debug: {
-      totalRoomsInDb: totalRooms,
-      activeRoomsInDb: activeRooms,
-      bookedRoomIds: bookedIds,
-      availablePremiumPlus: availablePremiumPlus.length,
-      availablePremium: availablePremium.length,
-      requestedCount: count,
-      requestedType: roomType,
-    }
-  };
   } catch (error: any) {
     if (error instanceof BookingServiceError) {
       throw error;
     }
-    console.error('[searchAvailableRooms Error]', error);
-    throw createError(500, error.message || 'Failed to search available rooms');
+    console.error("[searchAvailableRooms Error]", error);
+    throw createError(500, error.message || "Failed to search available rooms");
   }
 };
 
@@ -255,7 +272,7 @@ export const getAvailableRooms = async (params: GetAvailableRoomsParams) => {
   const { checkIn, checkOut, guests } = params;
 
   if (!checkIn || !checkOut) {
-    throw createError(400, 'checkIn and checkOut are required.');
+    throw createError(400, "checkIn and checkOut are required.");
   }
 
   const { ci, co, ciDate, coDate } = validateDates(checkIn, checkOut);
@@ -265,7 +282,9 @@ export const getAvailableRooms = async (params: GetAvailableRoomsParams) => {
   const bookedRoomIds = await prisma.bookingRoom.findMany({
     where: {
       booking: {
-        bookingStatus: { in: ['pending', 'confirmed', 'checked_in', 'checked_out'] },
+        bookingStatus: {
+          in: ["pending", "confirmed", "checked_in", "checked_out"],
+        },
         checkIn: { lt: coDate },
         checkOut: { gt: ciDate },
       },
@@ -277,15 +296,16 @@ export const getAvailableRooms = async (params: GetAvailableRoomsParams) => {
 
   const availableRooms = await prisma.room.findMany({
     where: {
-      status: 'active',
+      status: "active",
       id: { notIn: bookedIds.length > 0 ? bookedIds : [-1] },
     },
-    orderBy: { pricePerNight: 'asc' },
+    orderBy: { pricePerNight: "asc" },
   });
 
   const grouped = availableRooms.reduce((acc: any, room) => {
     const type = room.roomType;
-    if (!acc[type]) acc[type] = { rooms: [], count: 0, pricePerNight: room.pricePerNight };
+    if (!acc[type])
+      acc[type] = { rooms: [], count: 0, pricePerNight: room.pricePerNight };
     acc[type].rooms.push({
       id: room.id,
       roomNumber: room.roomNumber,
@@ -308,28 +328,41 @@ export const getAvailableRooms = async (params: GetAvailableRoomsParams) => {
   };
 };
 
-export const createOnlineBooking = async (params: CreateOnlineBookingParams) => {
-  const { fullName, email, phone, members = [], roomIds, checkIn, checkOut, totalGuests, bookingSource = 'online', extraExpense = null } = params;
+export const createOnlineBooking = async (
+  params: CreateOnlineBookingParams,
+) => {
+  const {
+    fullName,
+    email,
+    phone,
+    members = [],
+    roomIds,
+    checkIn,
+    checkOut,
+    totalGuests,
+    bookingSource = "online",
+    extraExpense = null,
+  } = params;
 
   if (!fullName || !email || !phone) {
-    throw createError(400, 'fullName, email, and phone are required.');
+    throw createError(400, "fullName, email, and phone are required.");
   }
 
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   if (!emailRegex.test(email.trim())) {
-    throw createError(400, 'Please provide a valid email address.');
+    throw createError(400, "Please provide a valid email address.");
   }
 
   if (!roomIds || !Array.isArray(roomIds) || roomIds.length === 0) {
-    throw createError(400, 'At least one room must be selected.');
+    throw createError(400, "At least one room must be selected.");
   }
 
   if (!checkIn || !checkOut) {
-    throw createError(400, 'checkIn and checkOut are required.');
+    throw createError(400, "checkIn and checkOut are required.");
   }
 
   if (!totalGuests || totalGuests < 1) {
-    throw createError(400, 'totalGuests must be at least 1.');
+    throw createError(400, "totalGuests must be at least 1.");
   }
 
   const { ci, co, ciDate, coDate } = validateDates(checkIn, checkOut);
@@ -349,24 +382,31 @@ export const createOnlineBooking = async (params: CreateOnlineBookingParams) => 
        FROM rooms
        WHERE id = ANY($1::int[])
        FOR UPDATE`,
-      sanitizedRoomIds
+      sanitizedRoomIds,
     );
 
     if (lockedRooms.length !== sanitizedRoomIds.length) {
-      throw createError(404, 'One or more selected rooms do not exist.');
+      throw createError(404, "One or more selected rooms do not exist.");
     }
 
-    const unavailableRooms = lockedRooms.filter((r: any) => r.status !== 'active');
+    const unavailableRooms = lockedRooms.filter(
+      (r: any) => r.status !== "active",
+    );
     if (unavailableRooms.length > 0) {
-      const nums = unavailableRooms.map((r: any) => r.room_number).join(', ');
-      throw createError(409, `Room(s) ${nums} are currently under maintenance.`);
+      const nums = unavailableRooms.map((r: any) => r.room_number).join(", ");
+      throw createError(
+        409,
+        `Room(s) ${nums} are currently under maintenance.`,
+      );
     }
 
     const conflictingBookings = await tx.bookingRoom.findMany({
       where: {
         roomId: { in: sanitizedRoomIds },
         booking: {
-          bookingStatus: { in: ['pending', 'confirmed', 'checked_in', 'checked_out'] },
+          bookingStatus: {
+            in: ["pending", "confirmed", "checked_in", "checked_out"],
+          },
           checkIn: { lt: coDate },
           checkOut: { gt: ciDate },
         },
@@ -377,7 +417,10 @@ export const createOnlineBooking = async (params: CreateOnlineBookingParams) => 
     });
 
     if (conflictingBookings.length > 0) {
-      throw createError(409, 'Selected room is not available for the selected dates.');
+      throw createError(
+        409,
+        "Selected room is not available for the selected dates.",
+      );
     }
 
     const totalAmount = lockedRooms.reduce((sum: number, room: any) => {
@@ -413,7 +456,7 @@ export const createOnlineBooking = async (params: CreateOnlineBookingParams) => 
         checkIn: ciDate,
         checkOut: coDate,
         totalGuests: parseInt(String(totalGuests)),
-        bookingStatus: 'pending',
+        bookingStatus: "pending",
         bookingSource,
         totalAmount: parseFloat(totalWithGst.toFixed(2)),
         extraExpense: extraExpense || null,
@@ -431,8 +474,8 @@ export const createOnlineBooking = async (params: CreateOnlineBookingParams) => 
       data: {
         bookingId: newBooking.id,
         amount: parseFloat(totalWithGst.toFixed(2)),
-        paymentStatus: 'yet_to_pay',
-        paymentMethod: 'gateway',
+        paymentStatus: "yet_to_pay",
+        paymentMethod: "gateway",
       },
     });
 
@@ -455,8 +498,8 @@ export const createOnlineBooking = async (params: CreateOnlineBookingParams) => 
         pricePerNight: parseFloat(r.price_per_night),
       })),
       totalAmount: parseFloat(totalWithGst.toFixed(2)),
-      paymentStatus: 'yet_to_pay',
-      bookingStatus: 'pending',
+      paymentStatus: "yet_to_pay",
+      bookingStatus: "pending",
     };
   });
 
@@ -464,19 +507,28 @@ export const createOnlineBooking = async (params: CreateOnlineBookingParams) => 
 };
 
 export const createBooking = async (params: any) => {
-  throw createError(400, 'This endpoint is deprecated. Use POST /api/bookings/online or POST /api/admin/bookings/walkin');
+  throw createError(
+    400,
+    "This endpoint is deprecated. Use POST /api/bookings/online.",
+  );
 };
 
 export const confirmPayment = async (params: ConfirmPaymentParams) => {
   const { bookingId, amount, paymentMethod, transactionId } = params;
 
   if (!bookingId || !amount || !paymentMethod) {
-    throw createError(400, 'bookingId, amount, and paymentMethod are required.');
+    throw createError(
+      400,
+      "bookingId, amount, and paymentMethod are required.",
+    );
   }
 
   const normalized = normalizePaymentMethod(paymentMethod);
   if (!normalized) {
-    throw createError(400, 'paymentMethod must be one of: UPI, card, cash, gateway');
+    throw createError(
+      400,
+      "paymentMethod must be one of: UPI, card, cash, gateway",
+    );
   }
 
   const result = await prisma.$transaction(async (tx: any) => {
@@ -485,13 +537,13 @@ export const confirmPayment = async (params: ConfirmPaymentParams) => {
     });
 
     if (!booking) {
-      throw createError(404, 'Booking not found.');
+      throw createError(404, "Booking not found.");
     }
-    if (booking.bookingStatus === 'confirmed') {
-      throw createError(409, 'Booking is already confirmed.');
+    if (booking.bookingStatus === "confirmed") {
+      throw createError(409, "Booking is already confirmed.");
     }
-    if (booking.bookingStatus === 'cancelled') {
-      throw createError(409, 'Cannot confirm a cancelled booking.');
+    if (booking.bookingStatus === "cancelled") {
+      throw createError(409, "Cannot confirm a cancelled booking.");
     }
 
     const payment = await tx.payment.create({
@@ -499,7 +551,7 @@ export const confirmPayment = async (params: ConfirmPaymentParams) => {
         bookingId: parseInt(String(bookingId)),
         amount: parseFloat(String(amount)),
         paymentMethod: normalized,
-        paymentStatus: 'paid',
+        paymentStatus: "paid",
         transactionId: transactionId || null,
         paymentDate: new Date(),
       },
@@ -507,7 +559,7 @@ export const confirmPayment = async (params: ConfirmPaymentParams) => {
 
     const updatedBooking = await tx.booking.update({
       where: { id: parseInt(String(bookingId)) },
-      data: { bookingStatus: 'confirmed' },
+      data: { bookingStatus: "confirmed" },
     });
 
     return {
@@ -519,27 +571,38 @@ export const confirmPayment = async (params: ConfirmPaymentParams) => {
       paymentMethod: payment.paymentMethod,
       transactionId: payment.transactionId,
       paidAt: payment.paymentDate,
-      message: 'Payment confirmed. Booking is now confirmed.',
+      message: "Payment confirmed. Booking is now confirmed.",
     };
   });
 
   return result;
 };
 
-export const updateBookingStatus = async (params: UpdateBookingStatusParams) => {
+export const updateBookingStatus = async (
+  params: UpdateBookingStatusParams,
+) => {
   const { bookingId, bookingStatus, extraExpense } = params;
 
   if (!bookingId) {
-    throw createError(400, 'bookingId is required.');
+    throw createError(400, "bookingId is required.");
   }
 
   if (!bookingStatus) {
-    throw createError(400, 'bookingStatus is required.');
+    throw createError(400, "bookingStatus is required.");
   }
 
-  const validStatuses = ['pending', 'confirmed', 'cancelled', 'checked_in', 'checked_out'];
+  const validStatuses = [
+    "pending",
+    "confirmed",
+    "cancelled",
+    "checked_in",
+    "checked_out",
+  ];
   if (!validStatuses.includes(bookingStatus)) {
-    throw createError(400, `bookingStatus must be one of: ${validStatuses.join(', ')}`);
+    throw createError(
+      400,
+      `bookingStatus must be one of: ${validStatuses.join(", ")}`,
+    );
   }
 
   const booking = await prisma.booking.findUnique({
@@ -547,19 +610,25 @@ export const updateBookingStatus = async (params: UpdateBookingStatusParams) => 
   });
 
   if (!booking) {
-    throw createError(404, 'Booking not found.');
+    throw createError(404, "Booking not found.");
   }
 
   const allowedTransitions: Record<string, string[]> = {
-    'pending': ['confirmed', 'cancelled'],
-    'confirmed': ['checked_in', 'cancelled'],
-    'checked_in': ['checked_out', 'cancelled'],
-    'checked_out': ['cancelled'],
-    'cancelled': [],
+    pending: ["confirmed", "cancelled"],
+    confirmed: ["checked_in", "cancelled"],
+    checked_in: ["checked_out", "cancelled"],
+    checked_out: ["cancelled"],
+    cancelled: [],
   };
 
-  if (!allowedTransitions[booking.bookingStatus] || !allowedTransitions[booking.bookingStatus].includes(bookingStatus)) {
-    throw createError(400, `Invalid status transition from ${booking.bookingStatus} to ${bookingStatus}. Allowed transitions: pending -> confirmed/cancelled, confirmed -> checked_in/cancelled, checked_in -> checked_out/cancelled, checked_out -> cancelled.`);
+  if (
+    !allowedTransitions[booking.bookingStatus] ||
+    !allowedTransitions[booking.bookingStatus].includes(bookingStatus)
+  ) {
+    throw createError(
+      400,
+      `Invalid status transition from ${booking.bookingStatus} to ${bookingStatus}. Allowed transitions: pending -> confirmed/cancelled, confirmed -> checked_in/cancelled, checked_in -> checked_out/cancelled, checked_out -> cancelled.`,
+    );
   }
 
   const updated = await prisma.$transaction(async (tx: any) => {
@@ -573,10 +642,10 @@ export const updateBookingStatus = async (params: UpdateBookingStatusParams) => 
       data: updateData,
     });
 
-    if (bookingStatus === 'cancelled') {
+    if (bookingStatus === "cancelled") {
       await tx.payment.updateMany({
         where: { bookingId: parseInt(String(bookingId)) },
-        data: { paymentStatus: 'cancelled' },
+        data: { paymentStatus: "cancelled" },
       });
     }
 
@@ -584,11 +653,11 @@ export const updateBookingStatus = async (params: UpdateBookingStatusParams) => 
   });
 
   let finalTotal = parseFloat(String(updated.totalAmount));
-  if (extraExpense && extraExpense !== 'No expense') {
+  if (extraExpense && extraExpense !== "No expense") {
     const amountMatches = String(extraExpense).match(/₹([\d.]+)/g);
     if (amountMatches) {
-      amountMatches.forEach(match => {
-        const amt = parseFloat(match.replace('₹', ''));
+      amountMatches.forEach((match) => {
+        const amt = parseFloat(match.replace("₹", ""));
         finalTotal += amt;
       });
     }
@@ -598,13 +667,13 @@ export const updateBookingStatus = async (params: UpdateBookingStatusParams) => 
     bookingId: updated.id,
     bookingStatus: updated.bookingStatus,
     finalTotal: finalTotal.toFixed(2),
-    message: `Booking status updated to ${updated.bookingStatus}${bookingStatus === 'cancelled' ? ' and payment cancelled.' : ''}${extraExpense !== undefined ? ' Extra expense recorded.' : '.'}`,
+    message: `Booking status updated to ${updated.bookingStatus}${bookingStatus === "cancelled" ? " and payment cancelled." : ""}${extraExpense !== undefined ? " Extra expense recorded." : "."}`,
   };
 };
 
 export const getPendingBookings = async () => {
   const bookings = await prisma.booking.findMany({
-    where: { bookingStatus: 'pending' },
+    where: { bookingStatus: "pending" },
     include: {
       guest: {
         select: {
@@ -615,12 +684,12 @@ export const getPendingBookings = async () => {
       },
       payments: true,
     },
-    orderBy: { createdAt: 'desc' },
+    orderBy: { createdAt: "desc" },
   });
 
   return {
     total: bookings.length,
-    bookings: bookings.map(b => ({
+    bookings: bookings.map((b) => ({
       id: b.id,
       bookingReference: b.bookingReference,
       checkIn: b.checkIn,
@@ -629,7 +698,7 @@ export const getPendingBookings = async () => {
       createdAt: b.createdAt,
       bookingStatus: b.bookingStatus,
       guest: b.guest,
-      payments: b.payments.map(p => ({
+      payments: b.payments.map((p) => ({
         id: p.id,
         amount: parseFloat(String(p.amount)),
         paymentMethod: p.paymentMethod,
@@ -641,14 +710,16 @@ export const getPendingBookings = async () => {
   };
 };
 
-export const searchRoomsSimple = async (params: Partial<GetAvailableRoomsParams> & { roomType?: string }) => {
+export const searchRoomsSimple = async (
+  params: Partial<GetAvailableRoomsParams> & { roomType?: string },
+) => {
   const { checkIn, checkOut, roomType } = params;
 
   if (!checkIn || !checkOut) {
-    throw createError(400, 'checkIn and checkOut are required.');
+    throw createError(400, "checkIn and checkOut are required.");
   }
 
-  const validRoomTypes = ['premium', 'premium_plus'];
+  const validRoomTypes = ["premium", "premium_plus"];
   if (roomType && !validRoomTypes.includes(roomType)) {
     throw createError(400, 'roomType must be "premium" or "premium_plus".');
   }
@@ -658,7 +729,9 @@ export const searchRoomsSimple = async (params: Partial<GetAvailableRoomsParams>
   const bookedRoomIds = await prisma.bookingRoom.findMany({
     where: {
       booking: {
-        bookingStatus: { in: ['pending', 'confirmed', 'checked_in', 'checked_out'] },
+        bookingStatus: {
+          in: ["pending", "confirmed", "checked_in", "checked_out"],
+        },
         checkIn: { lt: coDate },
         checkOut: { gt: ciDate },
       },
@@ -668,14 +741,14 @@ export const searchRoomsSimple = async (params: Partial<GetAvailableRoomsParams>
 
   const bookedIds = new Set(bookedRoomIds.map((br) => br.roomId));
 
-  const where: any = { status: 'active' };
+  const where: any = { status: "active" };
   if (roomType) {
     where.roomType = roomType;
   }
 
   const rooms = await prisma.room.findMany({
     where,
-    orderBy: { roomNumber: 'asc' },
+    orderBy: { roomNumber: "asc" },
   });
 
   const availableRooms = rooms.filter((room) => !bookedIds.has(room.id));
@@ -693,36 +766,52 @@ export const searchRoomsSimple = async (params: Partial<GetAvailableRoomsParams>
   };
 };
 
-export const createOfflineBooking = async (params: CreateOfflineBookingParams) => {
+export const createOfflineBooking = async (
+  params: CreateOfflineBookingParams,
+) => {
   const { guest, members, booking, payment, bookingStatus } = params;
 
   if (!guest || !guest.fullName || !guest.phone || !guest.email) {
-    throw createError(400, 'Guest fullName, phone, and email are required.');
+    throw createError(400, "Guest fullName, phone, and email are required.");
   }
 
-  if (!booking || !booking.checkIn || !booking.checkOut || booking.totalGuests === undefined) {
-    throw createError(400, 'Booking checkIn, checkOut, and totalGuests are required.');
+  if (
+    !booking ||
+    !booking.checkIn ||
+    !booking.checkOut ||
+    booking.totalGuests === undefined
+  ) {
+    throw createError(
+      400,
+      "Booking checkIn, checkOut, and totalGuests are required.",
+    );
   }
 
   if (!Array.isArray(booking.roomIds) || booking.roomIds.length === 0) {
-    throw createError(400, 'At least one roomId must be provided.');
+    throw createError(400, "At least one roomId must be provided.");
   }
 
   if (!payment || !payment.paymentMethod) {
-    throw createError(400, 'Payment method is required.');
+    throw createError(400, "Payment method is required.");
   }
 
-  const validBookingStatuses = ['confirmed', 'checked_in'];
+  const validBookingStatuses = ["confirmed", "checked_in"];
   if (!validBookingStatuses.includes(bookingStatus)) {
-    throw createError(400, 'bookingStatus must be "confirmed" or "checked_in".');
+    throw createError(
+      400,
+      'bookingStatus must be "confirmed" or "checked_in".',
+    );
   }
 
   const normalized = normalizePaymentMethod(payment.paymentMethod);
   if (!normalized) {
-    throw createError(400, 'Invalid paymentMethod.');
+    throw createError(400, "Invalid paymentMethod.");
   }
 
-  const { ci, co, ciDate, coDate } = validateDates(booking.checkIn, booking.checkOut);
+  const { ci, co, ciDate, coDate } = validateDates(
+    booking.checkIn,
+    booking.checkOut,
+  );
   const bookingReference = await generateBookingReference();
 
   return await prisma.$transaction(async (tx: any) => {
@@ -731,24 +820,31 @@ export const createOfflineBooking = async (params: CreateOfflineBookingParams) =
        FROM rooms
        WHERE id = ANY($1::int[])
        FOR UPDATE`,
-      booking.roomIds.map((id) => parseInt(String(id)))
+      booking.roomIds.map((id) => parseInt(String(id))),
     );
 
     if (lockedRooms.length !== booking.roomIds.length) {
-      throw createError(404, 'One or more selected rooms do not exist.');
+      throw createError(404, "One or more selected rooms do not exist.");
     }
 
-    const unavailableRooms = lockedRooms.filter((r: any) => r.status !== 'active');
+    const unavailableRooms = lockedRooms.filter(
+      (r: any) => r.status !== "active",
+    );
     if (unavailableRooms.length > 0) {
-      const nums = unavailableRooms.map((r: any) => r.room_number).join(', ');
-      throw createError(409, `Room(s) ${nums} are currently under maintenance.`);
+      const nums = unavailableRooms.map((r: any) => r.room_number).join(", ");
+      throw createError(
+        409,
+        `Room(s) ${nums} are currently under maintenance.`,
+      );
     }
 
     const conflictingBookings = await tx.bookingRoom.findMany({
       where: {
         roomId: { in: booking.roomIds.map((id) => parseInt(String(id))) },
         booking: {
-          bookingStatus: { in: ['pending', 'confirmed', 'checked_in', 'checked_out'] },
+          bookingStatus: {
+            in: ["pending", "confirmed", "checked_in", "checked_out"],
+          },
           checkIn: { lt: coDate },
           checkOut: { gt: ciDate },
         },
@@ -761,8 +857,11 @@ export const createOfflineBooking = async (params: CreateOfflineBookingParams) =
     if (conflictingBookings.length > 0) {
       const conflictDetails = conflictingBookings
         .map((c: any) => `Room ${c.room.roomNumber}`)
-        .join(', ');
-      throw createError(409, `${conflictDetails} ${conflictingBookings.length > 1 ? 'are' : 'is'} already booked for the selected dates.`);
+        .join(", ");
+      throw createError(
+        409,
+        `${conflictDetails} ${conflictingBookings.length > 1 ? "are" : "is"} already booked for the selected dates.`,
+      );
     }
 
     const guestRecord = await tx.guest.create({
@@ -787,15 +886,15 @@ export const createOfflineBooking = async (params: CreateOfflineBookingParams) =
     }
 
     const nights = calculateNights(booking.checkIn, booking.checkOut);
-    
+
     // Calculate total amount from locked rooms (same as online booking)
     const totalAmount = lockedRooms.reduce((sum: number, room: any) => {
       return sum + parseFloat(room.price_per_night) * nights;
     }, 0);
-    
+
     // Add 5% GST to total amount
     const totalWithGst = totalAmount * 1.05;
-    
+
     const newBooking = await tx.booking.create({
       data: {
         guestId: guestRecord.id,
@@ -804,7 +903,7 @@ export const createOfflineBooking = async (params: CreateOfflineBookingParams) =
         checkOut: coDate,
         totalGuests: parseInt(String(booking.totalGuests)),
         bookingStatus,
-        bookingSource: 'offline',
+        bookingSource: "offline",
         totalAmount: parseFloat(totalWithGst.toFixed(2)),
         extraExpense: booking.extraExpense || null,
       },
@@ -820,11 +919,15 @@ export const createOfflineBooking = async (params: CreateOfflineBookingParams) =
     const paymentRecord = await tx.payment.create({
       data: {
         bookingId: newBooking.id,
-        amount: payment.amount ? parseFloat(String(payment.amount)) : parseFloat(totalWithGst.toFixed(2)),
+        amount: payment.amount
+          ? parseFloat(String(payment.amount))
+          : parseFloat(totalWithGst.toFixed(2)),
         paymentMethod: normalized,
-        paymentStatus: 'paid',
+        paymentStatus: "paid",
         transactionId: payment.transactionId || null,
-        paymentDate: payment.paymentDate ? new Date(payment.paymentDate) : new Date(),
+        paymentDate: payment.paymentDate
+          ? new Date(payment.paymentDate)
+          : new Date(),
       },
     });
 
@@ -885,17 +988,29 @@ export const getBookings = async (params: GetBookingsParams) => {
   const where: any = {};
 
   if (status) {
-    const validStatuses = ['pending', 'confirmed', 'cancelled', 'checked_in', 'checked_out'];
+    const validStatuses = [
+      "pending",
+      "confirmed",
+      "cancelled",
+      "checked_in",
+      "checked_out",
+    ];
     if (!validStatuses.includes(status)) {
-      throw createError(400, `Invalid status. Must be one of: ${validStatuses.join(', ')}`);
+      throw createError(
+        400,
+        `Invalid status. Must be one of: ${validStatuses.join(", ")}`,
+      );
     }
     where.bookingStatus = status;
   }
 
   if (source) {
-    const validSources = ['online', 'offline'];
+    const validSources = ["online", "offline"];
     if (!validSources.includes(source)) {
-      throw createError(400, `Invalid source. Must be one of: ${validSources.join(', ')}`);
+      throw createError(
+        400,
+        `Invalid source. Must be one of: ${validSources.join(", ")}`,
+      );
     }
     where.bookingSource = source;
   }
@@ -903,10 +1018,10 @@ export const getBookings = async (params: GetBookingsParams) => {
   if (date) {
     const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
     if (!dateRegex.test(date)) {
-      throw createError(400, 'Date must be in YYYY-MM-DD format.');
+      throw createError(400, "Date must be in YYYY-MM-DD format.");
     }
-    const startDate = new Date(date + 'T00:00:00Z');
-    const endDate = new Date(date + 'T00:00:00Z');
+    const startDate = new Date(date + "T00:00:00Z");
+    const endDate = new Date(date + "T00:00:00Z");
     endDate.setDate(endDate.getDate() + 1);
     where.checkIn = {
       gte: startDate,
@@ -917,10 +1032,10 @@ export const getBookings = async (params: GetBookingsParams) => {
   if (checkOutDate) {
     const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
     if (!dateRegex.test(checkOutDate)) {
-      throw createError(400, 'checkOutDate must be in YYYY-MM-DD format.');
+      throw createError(400, "checkOutDate must be in YYYY-MM-DD format.");
     }
-    const startDate = new Date(checkOutDate + 'T00:00:00Z');
-    const endDate = new Date(checkOutDate + 'T00:00:00Z');
+    const startDate = new Date(checkOutDate + "T00:00:00Z");
+    const endDate = new Date(checkOutDate + "T00:00:00Z");
     endDate.setDate(endDate.getDate() + 1);
     where.checkOut = {
       gte: startDate,
@@ -965,11 +1080,11 @@ export const getBookings = async (params: GetBookingsParams) => {
         },
       },
     },
-    orderBy: { createdAt: 'desc' },
+    orderBy: { createdAt: "desc" },
     take: 100,
   });
 
-  return bookings.map(b => ({
+  return bookings.map((b) => ({
     id: b.id,
     bookingReference: b.bookingReference,
     checkIn: b.checkIn,
@@ -980,7 +1095,7 @@ export const getBookings = async (params: GetBookingsParams) => {
     totalAmount: parseFloat(String(b.totalAmount)),
     createdAt: b.createdAt,
     guest: b.guest,
-    rooms: b.bookingRooms.map(br => br.room),
+    rooms: b.bookingRooms.map((br) => br.room),
     payments: b.payments,
   }));
 };

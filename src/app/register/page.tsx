@@ -1,75 +1,74 @@
-'use client'
+"use client";
 
-import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
-import Link from 'next/link'
-import Image from 'next/image'
-import { motion } from 'framer-motion'
-import { useAuth } from '@/context/AuthContext'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Card, CardContent, CardHeader } from '@/components/ui/card'
-import { User, Mail, Phone, Lock, Loader2, AlertCircle } from 'lucide-react'
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import Image from "next/image";
+import { motion } from "framer-motion";
+import { useAuth } from "@/context/AuthContext";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { User, Mail, Phone, Lock, Loader2, AlertCircle } from "lucide-react";
 
 export default function RegisterPage() {
-  const router = useRouter()
-  const { register, isAuthenticated, isLoading: authLoading } = useAuth()
+  const router = useRouter();
+  const { register, isAuthenticated, isLoading: authLoading } = useAuth();
 
-  const [name, setName] = useState('')
-  const [email, setEmail] = useState('')
-  const [phone, setPhone] = useState('')
-  const [password, setPassword] = useState('')
-  const [confirmPassword, setConfirmPassword] = useState('')
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   // Redirect if already logged in
   useEffect(() => {
     if (!authLoading && isAuthenticated) {
-      router.replace('/')
+      router.replace("/");
     }
-  }, [isAuthenticated, authLoading, router])
+  }, [isAuthenticated, authLoading, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setError(null)
+    e.preventDefault();
+    setError(null);
 
     // Client-side validation
     if (password.length < 8) {
-      setError('Password must be at least 8 characters.')
-      return
+      setError("Password must be at least 8 characters.");
+      return;
     }
     if (password !== confirmPassword) {
-      setError('Passwords do not match.')
-      return
+      setError("Passwords do not match.");
+      return;
     }
 
-    setIsSubmitting(true)
+    setIsSubmitting(true);
     try {
-      await register(name, email, phone, password)
-      router.replace('/')
+      await register(name, email, phone, password);
+      router.replace("/");
     } catch (err: any) {
       const msg =
         err?.response?.data?.message ||
-        'Registration failed. Please try again.'
-      setError(msg)
+        "Registration failed. Please try again.";
+      setError(msg);
     } finally {
-      setIsSubmitting(false)
+      setIsSubmitting(false);
     }
-  }
+  };
 
   if (authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-stone-950">
         <Loader2 className="w-8 h-8 animate-spin text-amber-500" />
       </div>
-    )
+    );
   }
 
   return (
     <div className="min-h-screen bg-stone-950 flex items-center justify-center p-4 relative overflow-hidden">
-
       {/* Background glow */}
       <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[600px] h-[600px] bg-amber-500/5 rounded-full blur-[130px] pointer-events-none" />
 
@@ -90,7 +89,10 @@ export default function RegisterPage() {
               className="object-contain mb-3"
             />
           </Link>
-          <h1 className="text-2xl font-light tracking-widest text-amber-100" style={{ fontFamily: 'Playfair Display, serif' }}>
+          <h1
+            className="text-2xl font-light tracking-widest text-amber-100"
+            style={{ fontFamily: "Playfair Display, serif" }}
+          >
             MHOMES
           </h1>
           <p className="text-stone-500 text-xs tracking-widest uppercase mt-1">
@@ -110,7 +112,6 @@ export default function RegisterPage() {
 
           <CardContent className="px-8 pb-8 pt-4">
             <form onSubmit={handleSubmit} className="space-y-4">
-
               {/* Full Name */}
               <div className="space-y-1.5">
                 <Label htmlFor="name" className="text-stone-400 text-sm">
@@ -154,7 +155,7 @@ export default function RegisterPage() {
               {/* Phone */}
               <div className="space-y-1.5">
                 <Label htmlFor="phone" className="text-stone-400 text-sm">
-                  Phone number{' '}
+                  Phone number{" "}
                   <span className="text-stone-600 font-normal">(optional)</span>
                 </Label>
                 <div className="relative">
@@ -193,7 +194,10 @@ export default function RegisterPage() {
 
               {/* Confirm Password */}
               <div className="space-y-1.5">
-                <Label htmlFor="confirmPassword" className="text-stone-400 text-sm">
+                <Label
+                  htmlFor="confirmPassword"
+                  className="text-stone-400 text-sm"
+                >
                   Confirm Password <span className="text-amber-500">*</span>
                 </Label>
                 <div className="relative">
@@ -208,13 +212,15 @@ export default function RegisterPage() {
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     className={`pl-10 bg-stone-800 border-stone-700 text-stone-100 placeholder:text-stone-600 focus:ring-amber-500/20 transition-colors ${
                       confirmPassword && confirmPassword !== password
-                        ? 'border-red-700 focus:border-red-600'
-                        : 'focus:border-amber-500'
+                        ? "border-red-700 focus:border-red-600"
+                        : "focus:border-amber-500"
                     }`}
                   />
                 </div>
                 {confirmPassword && confirmPassword !== password && (
-                  <p className="text-red-400 text-xs mt-1">Passwords do not match</p>
+                  <p className="text-red-400 text-xs mt-1">
+                    Passwords do not match
+                  </p>
                 )}
               </div>
 
@@ -242,14 +248,14 @@ export default function RegisterPage() {
                     Creating account…
                   </>
                 ) : (
-                  'Create Account'
+                  "Create Account"
                 )}
               </Button>
             </form>
 
             {/* Login link */}
             <p className="text-center text-stone-500 text-sm mt-6">
-              Already have an account?{' '}
+              Already have an account?{" "}
               <Link
                 href="/login"
                 className="text-amber-400 hover:text-amber-300 font-medium transition-colors"
@@ -267,5 +273,5 @@ export default function RegisterPage() {
         </p>
       </motion.div>
     </div>
-  )
+  );
 }

@@ -106,6 +106,27 @@ function toISODate(d: Date | undefined): string {
   return `${y}-${m}-${dd}`
 }
 
+const gallerySlides = [
+  {
+    key: 'Pickle-Ball Courts',
+    image: '/pickleball.jpg',
+    title: 'Pickle-Ball Courts',
+    description: 'Experience the thrill of pickle-ball on our state-of-the-art courts, designed for both casual play and competitive matches.'
+  },
+  {
+    key: 'RainDance Water Park',
+    image: '/waterfall.jpg',
+    title: 'RainDance Water Park',
+    description: 'Dive into fun at RainDance Water Park, featuring exhilarating water showers for all ages.'
+  },
+  {
+    key: 'woyage-daycations',
+    image: '/entrance.jpg',
+    title: 'WOYAGE - DAYCATIONS',
+    description: 'Indulge in a day of luxury and relaxation at our beautiful resort.'
+  }
+]
+
 interface HeroDatePickerProps {
   checkIn: string | null
   checkOut: string | null
@@ -592,6 +613,7 @@ export default function Home() {
   const [checkOut, setCheckOut] = useState<string | null>(null)
   const [roomType, setRoomType] = useState<'premium' | 'premium_plus'>('premium')
   const [roomCount, setRoomCount] = useState<number>(1)
+  const [galleryIndex, setGalleryIndex] = useState(1)
 
   const handleHeroSearch = () => {
     if (!checkIn || !checkOut) {
@@ -706,6 +728,10 @@ export default function Home() {
       [roomName]: ((prev[roomName] || 0) - 1 + totalImages) % totalImages
     }))
   }
+  const slide = gallerySlides[galleryIndex]
+  const goLeft = () => setGalleryIndex((i) => (i - 1 + gallerySlides.length) % gallerySlides.length)
+  const goRight = () => setGalleryIndex((i) => (i + 1) % gallerySlides.length)
+
   const [activeSection, setActiveSection] = useState('home')
   const [shouldAnimateHome, setShouldAnimateHome] = useState(false)
   const { scrollYProgress } = useScroll()
@@ -1794,7 +1820,6 @@ export default function Home() {
 
       {/* Gallery Preview - Carousel Style */}
       <section id="gallery" className="py-24 bg-gradient-to-b from-muted/30 via-background to-muted/30 relative overflow-hidden">
-        {/* Decorative animated elements */}
         <div className="absolute top-20 right-0 w-96 h-96 bg-accent/10 rounded-full blur-3xl -mr-40" />
         <div className="absolute bottom-0 left-0 w-96 h-96 bg-primary/10 rounded-full blur-3xl -ml-40" />
 
@@ -1804,176 +1829,151 @@ export default function Home() {
             whileInView={{ opacity: 1, y: 0 }}
             className="text-center mb-20"
           >
-            <h2 className="luxury-heading mb-6" style={{ fontSize: 'clamp(32px, 4vw, 56px)', fontWeight: 400, letterSpacing: '-0.02em', color: '#1A1A1A' }}>
+            <h2
+              className="luxury-heading mb-6"
+              style={{
+                fontSize: 'clamp(32px, 4vw, 56px)',
+                fontWeight: 400,
+                letterSpacing: '-0.02em',
+                color: '#1A1A1A',
+              }}
+            >
               Picture Perfect Moments
             </h2>
-            <p className="luxury-text" style={{ fontWeight: 300, fontSize: '16px', color: '#4A4A4A', lineHeight: 1.8, maxWidth: '600px', margin: '0 auto' }}>
+            <p
+              className="luxury-text"
+              style={{
+                fontWeight: 300,
+                fontSize: '16px',
+                color: '#4A4A4A',
+                lineHeight: 1.8,
+                maxWidth: '600px',
+                margin: '0 auto',
+              }}
+            >
               Explore the breathtaking beauty of MHOMES Resort through our curated gallery of stunning imagery.
             </p>
           </motion.div>
 
-          {/* Carousel Data */}
-          {(() => {
-            // Carousel slides data
-            const gallerySlides = [
-              {
-                key: 'Pickle-Ball Courts',
-                image: "/pickleball.jpg",
-                title: 'Pickle-Ball Courts',
-                description: 'Experience the thrill of pickle-ball on our state-of-the-art courts, designed for both casual play and competitive matches.'
-              },
-              {
-                key: 'RainDance Water Park',
-                image: "/waterfall.jpg",
-                title: 'RainDance Water Park',
-                description: 'Dive into fun at RainDance Water Park, featuring exhilarating water showers for all ages.'
-              },
-              {
-                key: 'woyage-daycations',
-                image: "/entrance.jpg",
-                title: 'WOYAGE - DAYCATIONS',
-                description: 'Indulge in a day of luxury and relaxation at our beautiful resort.'
-              }
-            ];
-            const [galleryIndex, setGalleryIndex] = useState(1); // Start with the middle slide
-            const slide = gallerySlides[galleryIndex];
+          <div className="relative flex flex-col items-center justify-center min-h-[650px]">
+            <motion.div
+              className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[90vw] h-[480px] md:w-[80vw] md:h-[600px] rounded-3xl overflow-hidden z-0"
+              layoutId="gallery-bg"
+              transition={{ duration: 0.5 }}
+            >
+              <Image
+                src={slide.image}
+                alt={slide.title}
+                fill
+                className="object-cover w-full h-full scale-110 blur-[3px]"
+                priority
+              />
+              <div className="absolute inset-0 bg-gradient-to-b from-white/40 via-white/20 to-white/50" />
+            </motion.div>
 
-            const goLeft = () => setGalleryIndex((i) => (i - 1 + gallerySlides.length) % gallerySlides.length);
-            const goRight = () => setGalleryIndex((i) => (i + 1) % gallerySlides.length);
-
-            return (
-              <div className="relative flex flex-col items-center justify-center min-h-[650px]">
-                {/* Large blurred background image with enhanced effect */}
-                <motion.div
-                  className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[90vw] h-[480px] md:w-[80vw] md:h-[600px] rounded-3xl overflow-hidden z-0"
-                  layoutId="gallery-bg"
-                  transition={{ duration: 0.5 }}
+            <div className="relative z-10 flex w-full items-center justify-center">
+              <motion.button
+                aria-label="Previous"
+                onClick={goLeft}
+                whileHover={{ scale: 1.1, x: -10 }}
+                whileTap={{ scale: 0.9 }}
+                className="flex flex-col items-center justify-center w-16 h-96 group bg-transparent border-none focus:outline-none"
+              >
+                <motion.span
+                  className="w-12 h-12 flex items-center justify-center rounded-full border-2 border-primary/40 bg-white/40 group-hover:bg-accent/80 transition-colors shadow-lg hover:shadow-xl"
+                  whileHover={{ scale: 1.15 }}
                 >
-                  <Image
-                    src={slide.image}
-                    alt={slide.title}
-                    fill
-                    className="object-cover w-full h-full scale-110 blur-[3px]"
-                    priority
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-b from-white/40 via-white/20 to-white/50" />
-                </motion.div>
+                  <svg width="32" height="32" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" className="text-primary group-hover:text-white transition-colors"><path d="M15 19l-7-7 7-7" /></svg>
+                </motion.span>
+              </motion.button>
 
-                {/* Carousel content */}
-                <div className="relative z-10 flex w-full items-center justify-center">
-                  {/* Left arrow */}
-                  <motion.button
-                    aria-label="Previous"
-                    onClick={goLeft}
-                    whileHover={{ scale: 1.1, x: -10 }}
-                    whileTap={{ scale: 0.9 }}
-                    className="flex flex-col items-center justify-center w-16 h-96 group bg-transparent border-none focus:outline-none"
+              <motion.div className="w-full max-w-2xl mx-4" layoutId="gallery-card">
+                <div className="relative flex flex-col items-center justify-end h-[420px] md:h-[500px]">
+                  <motion.div
+                    className="absolute left-1/2 top-0 -translate-x-1/2 w-[90%] h-[70%] rounded-3xl overflow-hidden shadow-2xl"
+                    layoutId="gallery-image"
+                    whileHover={{ scale: 1.02 }}
+                    transition={{ type: 'spring', stiffness: 400, damping: 30 }}
                   >
-                    <motion.span
-                      className="w-12 h-12 flex items-center justify-center rounded-full border-2 border-primary/40 bg-white/40 group-hover:bg-accent/80 transition-colors shadow-lg hover:shadow-xl"
-                      whileHover={{ scale: 1.15 }}
-                    >
-                      <svg width="32" height="32" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" className="text-primary group-hover:text-white transition-colors"><path d="M15 19l-7-7 7-7" /></svg>
-                    </motion.span>
-                  </motion.button>
-
-                  {/* Center card with enhanced effects */}
-                  <motion.div className="w-full max-w-2xl mx-4" layoutId="gallery-card">
-                    <div className="relative flex flex-col items-center justify-end h-[420px] md:h-[500px]">
-                      <motion.div
-                        className="absolute left-1/2 top-0 -translate-x-1/2 w-[90%] h-[70%] rounded-3xl overflow-hidden shadow-2xl"
-                        layoutId="gallery-image"
-                        whileHover={{ scale: 1.02 }}
-                        transition={{ type: "spring", stiffness: 400, damping: 30 }}
-                      >
-                        <Image
-                          src={slide.image}
-                          alt={slide.title}
-                          fill
-                          className="object-cover w-full h-full"
-                        />
-                        <div className="absolute inset-0 bg-black/20 group-hover:bg-black/10 transition-all duration-300" />
-                      </motion.div>
-
-                      <motion.div
-                        className="relative z-10 w-full bg-gradient-to-br from-white/98 to-white/95 backdrop-blur-sm rounded-3xl p-8 flex flex-col items-center justify-center shadow-2xl min-h-[160px] border border-accent/20"
-                        layoutId="gallery-text"
-                        whileHover={{ boxShadow: "0 20px 60px rgba(var(--accent), 0.3)" }}
-                      >
-                        <motion.h3
-                          className="luxury-heading text-3xl md:text-4xl mb-3 text-center bg-clip-text text-transparent bg-gradient-to-r from-primary to-accent"
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: 1 }}
-                          transition={{ delay: 0.2 }}
-                        >
-                          {slide.title}
-                        </motion.h3>
-                        <motion.p
-                          className="luxury-text text-base md:text-lg text-muted-foreground text-center mb-5"
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: 1 }}
-                          transition={{ delay: 0.3 }}
-                        >
-                          {slide.description}
-                        </motion.p>
-                        <motion.div
-                          whileHover={{ x: 5 }}
-                        >
-                          <Button variant="link" className="text-accent text-lg font-semibold hover:text-accent/80">
-                            DISCOVER MORE <ArrowRight className="ml-2 w-4 h-4" />
-                          </Button>
-                        </motion.div>
-                      </motion.div>
-                    </div>
+                    <Image
+                      src={slide.image}
+                      alt={slide.title}
+                      fill
+                      className="object-cover w-full h-full"
+                    />
+                    <div className="absolute inset-0 bg-black/20 group-hover:bg-black/10 transition-all duration-300" />
                   </motion.div>
 
-                  {/* Right arrow */}
-                  <motion.button
-                    aria-label="Next"
-                    onClick={goRight}
-                    whileHover={{ scale: 1.1, x: 10 }}
-                    whileTap={{ scale: 0.9 }}
-                    className="flex flex-col items-center justify-center w-16 h-96 group bg-transparent border-none focus:outline-none"
+                  <motion.div
+                    className="relative z-10 w-full bg-gradient-to-br from-white/98 to-white/95 backdrop-blur-sm rounded-3xl p-8 flex flex-col items-center justify-center shadow-2xl min-h-[160px] border border-accent/20"
+                    layoutId="gallery-text"
+                    whileHover={{ boxShadow: '0 20px 60px rgba(var(--accent), 0.3)' }}
                   >
-                    <motion.span
-                      className="w-12 h-12 flex items-center justify-center rounded-full border-2 border-primary/40 bg-white/40 group-hover:bg-accent/80 transition-colors shadow-lg hover:shadow-xl"
-                      whileHover={{ scale: 1.15 }}
+                    <motion.h3
+                      className="luxury-heading text-3xl md:text-4xl mb-3 text-center bg-clip-text text-transparent bg-gradient-to-r from-primary to-accent"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ delay: 0.2 }}
                     >
-                      <svg width="32" height="32" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" className="text-primary group-hover:text-white transition-colors"><path d="M9 5l7 7-7 7" /></svg>
-                    </motion.span>
-                  </motion.button>
+                      {slide.title}
+                    </motion.h3>
+                    <motion.p
+                      className="luxury-text text-base md:text-lg text-muted-foreground text-center mb-5"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ delay: 0.3 }}
+                    >
+                      {slide.description}
+                    </motion.p>
+                    <motion.div whileHover={{ x: 5 }}>
+                      <Button variant="link" className="text-accent text-lg font-semibold hover:text-accent/80">
+                        DISCOVER MORE <ArrowRight className="ml-2 w-4 h-4" />
+                      </Button>
+                    </motion.div>
+                  </motion.div>
                 </div>
+              </motion.div>
 
-                {/* Carousel indicators */}
-                <motion.div
-                  className="absolute bottom-0 left-1/2 -translate-x-1/2 flex gap-3 mt-8"
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.3 }}
+              <motion.button
+                aria-label="Next"
+                onClick={goRight}
+                whileHover={{ scale: 1.1, x: 10 }}
+                whileTap={{ scale: 0.9 }}
+                className="flex flex-col items-center justify-center w-16 h-96 group bg-transparent border-none focus:outline-none"
+              >
+                <motion.span
+                  className="w-12 h-12 flex items-center justify-center rounded-full border-2 border-primary/40 bg-white/40 group-hover:bg-accent/80 transition-colors shadow-lg hover:shadow-xl"
+                  whileHover={{ scale: 1.15 }}
                 >
-                  {gallerySlides.map((_, i) => (
-                    <motion.button
-                      key={i}
-                      onClick={() => setGalleryIndex(i)}
-                      className={`rounded-full transition-all ${i === galleryIndex ? 'bg-accent' : 'bg-accent/30 hover:bg-accent/60'}`}
-                      animate={{
-                        width: i === galleryIndex ? 32 : 8,
-                        height: 8
-                      }}
-                      whileHover={{ scale: 1.2 }}
-                    />
-                  ))}
-                </motion.div>
-              </div>
-            );
-          })()}
+                  <svg width="32" height="32" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" className="text-primary group-hover:text-white transition-colors"><path d="M9 5l7 7-7 7" /></svg>
+                </motion.span>
+              </motion.button>
+            </div>
 
+            <motion.div
+              className="absolute bottom-0 left-1/2 -translate-x-1/2 flex gap-3 mt-8"
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+            >
+              {gallerySlides.map((_, i) => (
+                <motion.button
+                  key={i}
+                  onClick={() => setGalleryIndex(i)}
+                  className={`rounded-full transition-all ${i === galleryIndex ? 'bg-accent' : 'bg-accent/30 hover:bg-accent/60'}`}
+                  animate={{
+                    width: i === galleryIndex ? 32 : 8,
+                    height: 8,
+                  }}
+                  whileHover={{ scale: 1.2 }}
+                />
+              ))}
+            </motion.div>
+          </div>
         </div>
       </section>
 
-      {/* Reviews */}
       <section id="reviews" className="py-24 bg-gradient-to-b from-background via-muted/20 to-background relative overflow-hidden">
-        {/* Animated background */}
         <div className="absolute inset-0 opacity-20">
           <motion.div
             className="absolute top-0 right-20 w-96 h-96 bg-accent/20 blur-[100px] rounded-full"
@@ -1988,10 +1988,28 @@ export default function Home() {
             whileInView={{ opacity: 1, y: 0 }}
             className="text-center mb-20"
           >
-            <h2 className="luxury-heading mb-6" style={{ fontSize: 'clamp(32px, 4vw, 56px)', fontWeight: 400, letterSpacing: '-0.02em', color: '#1A1A1A' }}>
+            <h2
+              className="luxury-heading mb-6"
+              style={{
+                fontSize: 'clamp(32px, 4vw, 56px)',
+                fontWeight: 400,
+                letterSpacing: '-0.02em',
+                color: '#1A1A1A',
+              }}
+            >
               Guest Testimonials
             </h2>
-            <p className="luxury-text" style={{ fontWeight: 300, fontSize: '16px', color: '#4A4A4A', lineHeight: 1.8, maxWidth: '600px', margin: '0 auto' }}>
+            <p
+              className="luxury-text"
+              style={{
+                fontWeight: 300,
+                fontSize: '16px',
+                color: '#4A4A4A',
+                lineHeight: 1.8,
+                maxWidth: '600px',
+                margin: '0 auto',
+              }}
+            >
               Discover what our guests are saying about their extraordinary experiences at MHOMES Resort.
             </p>
           </motion.div>
@@ -2003,7 +2021,7 @@ export default function Home() {
                 initial={{ opacity: 0, y: 50 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.15 }}
-                whileHover={{ y: -6, boxShadow: "0 14px 40px rgba(var(--accent), 0.16)" }}
+                whileHover={{ y: -6, boxShadow: '0 14px 40px rgba(var(--accent), 0.16)' }}
                 className="h-full"
               >
                 <Card className="luxury-card h-full bg-gradient-to-br from-white/50 to-white/30 border border-accent/20 hover:border-accent/50 transition-all duration-300 backdrop-blur-sm">
@@ -2011,11 +2029,13 @@ export default function Home() {
                     <motion.div
                       initial={{ scale: 0.8 }}
                       whileInView={{ scale: 1 }}
-                      transition={{ type: "spring" }}
+                      transition={{ type: 'spring' }}
                     >
                       <Quote className="w-7 h-7 text-accent mb-4" />
                     </motion.div>
-                    <p className="luxury-text mb-5 text-[15px] leading-7 italic">"{testimonial.text.length > 170 ? `${testimonial.text.slice(0, 170).trimEnd()}...` : testimonial.text}"</p>
+                    <p className="luxury-text mb-5 text-[15px] leading-7 italic">
+                      "{testimonial.text.length > 170 ? `${testimonial.text.slice(0, 170).trimEnd()}...` : testimonial.text}"
+                    </p>
                     <div className="flex items-center gap-1.5 mb-5">
                       {Array.from({ length: testimonial.rating }).map((_, i) => (
                         <motion.div
@@ -2071,7 +2091,6 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Booking CTA - Featured booking form */}
       <section id="booking" className="py-24 bg-gradient-to-br from-primary/5 via-background to-accent/10 relative overflow-hidden">
         <div className="absolute inset-0">
           <div className="absolute -top-24 left-1/4 h-64 w-64 rounded-full bg-accent/10 blur-3xl" />
@@ -2086,11 +2105,29 @@ export default function Home() {
             transition={{ duration: 0.8 }}
             className="max-w-5xl mx-auto text-center"
           >
-            <h2 className="luxury-heading mb-5" style={{ fontSize: 'clamp(32px, 4vw, 56px)', fontWeight: 400, letterSpacing: '-0.02em', color: '#1A1A1A' }}>
+            <h2
+              className="luxury-heading mb-5"
+              style={{
+                fontSize: 'clamp(32px, 4vw, 56px)',
+                fontWeight: 400,
+                letterSpacing: '-0.02em',
+                color: '#1A1A1A',
+              }}
+            >
               Plan Your Stay
             </h2>
 
-            <p className="luxury-text mb-12" style={{ fontWeight: 300, fontSize: '16px', color: '#4A4A4A', lineHeight: 1.8, maxWidth: '680px', margin: '0 auto 48px' }}>
+            <p
+              className="luxury-text mb-12"
+              style={{
+                fontWeight: 300,
+                fontSize: '16px',
+                color: '#4A4A4A',
+                lineHeight: 1.8,
+                maxWidth: '680px',
+                margin: '0 auto 48px',
+              }}
+            >
               Fill in your stay details and move to reservation in one smooth flow designed for a premium booking experience.
             </p>
 
@@ -2166,7 +2203,6 @@ export default function Home() {
                         </div>
                       </div>
                     </div>
-
                   </div>
                 </div>
               </div>
@@ -2191,9 +2227,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Contact */}
       <section id="contact" className="py-24 bg-gradient-to-b from-background via-muted/10 to-background relative overflow-hidden">
-        {/* Decorative elements */}
         <div className="absolute top-0 left-0 w-96 h-96 bg-accent/5 rounded-full blur-3xl -ml-48 -mt-48" />
         <div className="absolute bottom-0 right-0 w-96 h-96 bg-primary/5 rounded-full blur-3xl -mr-48 -mb-48" />
 
@@ -2203,10 +2237,28 @@ export default function Home() {
             whileInView={{ opacity: 1, y: 0 }}
             className="text-center mb-20"
           >
-            <h2 className="luxury-heading mb-6" style={{ fontSize: 'clamp(32px, 4vw, 56px)', fontWeight: 400, letterSpacing: '-0.02em', color: '#1A1A1A' }}>
+            <h2
+              className="luxury-heading mb-6"
+              style={{
+                fontSize: 'clamp(32px, 4vw, 56px)',
+                fontWeight: 400,
+                letterSpacing: '-0.02em',
+                color: '#1A1A1A',
+              }}
+            >
               Get in Touch
             </h2>
-            <p className="luxury-text" style={{ fontWeight: 300, fontSize: '16px', color: '#4A4A4A', lineHeight: 1.8, maxWidth: '600px', margin: '0 auto' }}>
+            <p
+              className="luxury-text"
+              style={{
+                fontWeight: 300,
+                fontSize: '16px',
+                color: '#4A4A4A',
+                lineHeight: 1.8,
+                maxWidth: '600px',
+                margin: '0 auto',
+              }}
+            >
               Ready to experience paradise? Contact us to plan your perfect getaway or learn more about our luxury offerings.
             </p>
           </motion.div>
@@ -2269,14 +2321,11 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Footer */}
       <footer className="bg-primary text-white relative">
-        {/* Gradient Background */}
         <div className="absolute inset-0 bg-gradient-to-b from-primary via-primary to-primary/95 opacity-90" />
-        
+
         <div className="relative z-10 container mx-auto px-4">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 py-16">
-            {/* Brand Column */}
             <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} className="-mt-16 -ml-6">
               <Image
                 src="/MHOMES-logo.png"
@@ -2291,11 +2340,11 @@ export default function Home() {
               </p>
             </motion.div>
 
-            {/* Explore Column */}
             <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.1 }}>
               <h3 className="luxury-heading text-lg font-bold text-white mb-8 uppercase tracking-wider">Explore</h3>
               <nav className="space-y-4 flex flex-col">
-                {[                  { name: 'Home', href: '/#home' },
+                {[
+                  { name: 'Home', href: '/#home' },
                   { name: 'About Us', href: '/#story' },
                   { name: 'Rooms', href: '/#accommodations' },
                   { name: 'Gallery', href: '/#gallery' },
@@ -2308,7 +2357,6 @@ export default function Home() {
               </nav>
             </motion.div>
 
-            {/* Services Column */}
             <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.2 }}>
               <h3 className="luxury-heading text-lg font-bold text-white mb-8 uppercase tracking-wider">Services</h3>
               <nav className="space-y-4 flex flex-col">
@@ -2324,7 +2372,6 @@ export default function Home() {
               </nav>
             </motion.div>
 
-            {/* Contact Column */}
             <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.3 }}>
               <h3 className="luxury-heading text-lg font-bold text-white mb-8 uppercase tracking-wider">Contact</h3>
               <div className="space-y-6">
@@ -2350,10 +2397,8 @@ export default function Home() {
             </motion.div>
           </div>
 
-          {/* Divider */}
           <div className="h-px bg-white/15" />
 
-          {/* Bottom Bar */}
           <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} transition={{ duration: 0.5, delay: 0.4 }} className="py-8">
             <div className="flex flex-col md:flex-row items-center justify-center gap-6">
               <div className="flex gap-6 flex-wrap justify-center">
@@ -2368,7 +2413,6 @@ export default function Home() {
         </div>
       </footer>
 
-      {/* Chat Widget */}
       <ChatWidget isChatOpen={isChatOpen} setIsChatOpen={setIsChatOpen} />
     </div>
   )

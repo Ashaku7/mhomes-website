@@ -1,108 +1,120 @@
-'use client'
+"use client";
 
-import React, { useState, useRef, useEffect, KeyboardEvent, useCallback } from 'react'
-import { motion } from 'framer-motion'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { MessageCircle, X, Send } from 'lucide-react'
+import React, {
+  useState,
+  useRef,
+  useEffect,
+  KeyboardEvent,
+  useCallback,
+} from "react";
+import { motion } from "framer-motion";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { MessageCircle, X, Send } from "lucide-react";
 
 interface ChatMessage {
-  id: number
-  text: string
-  sender: 'bot' | 'user'
-  timestamp: Date
+  id: number;
+  text: string;
+  sender: "bot" | "user";
+  timestamp: Date;
 }
 
 interface ChatWidgetProps {
-  isChatOpen: boolean
-  setIsChatOpen: (open: boolean) => void
+  isChatOpen: boolean;
+  setIsChatOpen: (open: boolean) => void;
 }
 
 const ChatWidget = ({ isChatOpen, setIsChatOpen }: ChatWidgetProps) => {
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
-    { id: 1, text: 'Hello! Welcome to MHOMES Resort. I\'m your virtual assistant. How can I help you plan your perfect vacation?', sender: 'bot', timestamp: new Date() }
-  ])
-  const [chatInput, setChatInput] = useState('')
-  const [isChatLoading, setIsChatLoading] = useState(false)
-  const chatInputRef = useRef<HTMLInputElement | null>(null)
-  const chatMessagesRef = useRef<HTMLDivElement | null>(null)
+    {
+      id: 1,
+      text: "Hello! Welcome to MHOMES Resort. I'm your virtual assistant. How can I help you plan your perfect vacation?",
+      sender: "bot",
+      timestamp: new Date(),
+    },
+  ]);
+  const [chatInput, setChatInput] = useState("");
+  const [isChatLoading, setIsChatLoading] = useState(false);
+  const chatInputRef = useRef<HTMLInputElement | null>(null);
+  const chatMessagesRef = useRef<HTMLDivElement | null>(null);
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
-    if (!chatMessagesRef.current) return
+    if (!chatMessagesRef.current) return;
     const scrollTimer = requestAnimationFrame(() => {
       if (chatMessagesRef.current) {
-        chatMessagesRef.current.scrollTop = chatMessagesRef.current.scrollHeight
+        chatMessagesRef.current.scrollTop =
+          chatMessagesRef.current.scrollHeight;
       }
-    })
-    return () => cancelAnimationFrame(scrollTimer)
-  }, [chatMessages.length, isChatLoading])
+    });
+    return () => cancelAnimationFrame(scrollTimer);
+  }, [chatMessages.length, isChatLoading]);
 
   // Auto-focus on chat input when chat opens
   useEffect(() => {
     if (isChatOpen && chatInputRef.current) {
       const timer = setTimeout(() => {
         if (chatInputRef.current) {
-          chatInputRef.current.focus()
+          chatInputRef.current.focus();
         }
-      }, 100)
-      return () => clearTimeout(timer)
+      }, 100);
+      return () => clearTimeout(timer);
     }
-  }, [isChatOpen])
+  }, [isChatOpen]);
 
   const sendChatMessage = useCallback(async () => {
-    if (!chatInput.trim()) return
+    if (!chatInput.trim()) return;
 
-    const messageText = chatInput
-    setChatInput('')
-    const userMessage: ChatMessage = { 
-      id: Date.now(), 
-      text: messageText, 
-      sender: 'user', 
-      timestamp: new Date() 
-    }
-    setChatMessages(prev => [...prev, userMessage])
-    setIsChatLoading(true)
+    const messageText = chatInput;
+    setChatInput("");
+    const userMessage: ChatMessage = {
+      id: Date.now(),
+      text: messageText,
+      sender: "user",
+      timestamp: new Date(),
+    };
+    setChatMessages((prev) => [...prev, userMessage]);
+    setIsChatLoading(true);
 
     try {
-      const response = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: messageText })
-      })
-      const data = await response.json()
-      const botMessage: ChatMessage = { 
-        id: Date.now() + 1, 
-        text: data.response, 
-        sender: 'bot', 
-        timestamp: new Date() 
-      }
-      setChatMessages(prev => [...prev, botMessage])
+      const response = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: messageText }),
+      });
+      const data = await response.json();
+      const botMessage: ChatMessage = {
+        id: Date.now() + 1,
+        text: data.response,
+        sender: "bot",
+        timestamp: new Date(),
+      };
+      setChatMessages((prev) => [...prev, botMessage]);
       if (chatInputRef.current) {
-        chatInputRef.current.focus()
+        chatInputRef.current.focus();
       }
     } catch (error) {
-      const errorMessage: ChatMessage = { 
-        id: Date.now() + 1, 
-        text: 'Sorry, I\'m having trouble connecting. Please try again later.', 
-        sender: 'bot', 
-        timestamp: new Date() 
-      }
-      setChatMessages(prev => [...prev, errorMessage])
+      const errorMessage: ChatMessage = {
+        id: Date.now() + 1,
+        text: "Sorry, I'm having trouble connecting. Please try again later.",
+        sender: "bot",
+        timestamp: new Date(),
+      };
+      setChatMessages((prev) => [...prev, errorMessage]);
     } finally {
-      setIsChatLoading(false)
+      setIsChatLoading(false);
     }
-  }, [chatInput])
+  }, [chatInput]);
 
   const handleChatKeyPress = (e: KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault()
-      sendChatMessage()
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      sendChatMessage();
     }
-  }
+  };
 
   return (
-    <motion.div 
+    <motion.div
       className="fixed bottom-8 right-8 z-40"
       initial={{ scale: 0, opacity: 0 }}
       animate={{ scale: 1, opacity: 1 }}
@@ -121,7 +133,9 @@ const ChatWidget = ({ isChatOpen, setIsChatOpen }: ChatWidgetProps) => {
         >
           <motion.div
             animate={{ rotate: [0, 360] }}
-            transition={isChatOpen ? { duration: 0 } : { duration: 2, repeat: Infinity }}
+            transition={
+              isChatOpen ? { duration: 0 } : { duration: 2, repeat: Infinity }
+            }
           >
             <MessageCircle className="w-8 h-8" />
           </motion.div>
@@ -137,14 +151,14 @@ const ChatWidget = ({ isChatOpen, setIsChatOpen }: ChatWidgetProps) => {
           className="absolute bottom-20 right-0 w-80 h-96 bg-gradient-to-br from-white/98 to-white/95 glass-effect rounded-2xl shadow-2xl flex flex-col border-2 border-accent/20"
           onClick={(e) => e.stopPropagation()}
         >
-          <motion.div 
+          <motion.div
             className="sticky top-0 p-3 border-b-2 border-accent/20 bg-gradient-to-r from-accent/10 to-primary/10 rounded-t-2xl flex-shrink-0"
             initial={{ y: -20 }}
             animate={{ y: 0 }}
           >
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <motion.div 
+                <motion.div
                   className="w-10 h-10 bg-gradient-to-br from-accent to-accent/60 rounded-full flex items-center justify-center shadow-lg flex-shrink-0"
                   animate={{ scale: [1, 1.1, 1] }}
                   transition={{ duration: 2, repeat: Infinity }}
@@ -152,14 +166,18 @@ const ChatWidget = ({ isChatOpen, setIsChatOpen }: ChatWidgetProps) => {
                   <MessageCircle className="w-5 h-5 text-white" />
                 </motion.div>
                 <div>
-                  <h3 className="luxury-heading text-sm font-bold text-primary">Resort Assistant</h3>
+                  <h3 className="luxury-heading text-sm font-bold text-primary">
+                    Resort Assistant
+                  </h3>
                   <div className="flex items-center gap-1">
-                    <motion.div 
+                    <motion.div
                       className="w-2 h-2 bg-green-500 rounded-full"
                       animate={{ opacity: [1, 0.5, 1] }}
                       transition={{ duration: 1.5, repeat: Infinity }}
                     />
-                    <p className="luxury-text text-xs text-muted-foreground">Online</p>
+                    <p className="luxury-text text-xs text-muted-foreground">
+                      Online
+                    </p>
                   </div>
                 </div>
               </div>
@@ -175,7 +193,7 @@ const ChatWidget = ({ isChatOpen, setIsChatOpen }: ChatWidgetProps) => {
             </div>
           </motion.div>
 
-          <div 
+          <div
             ref={chatMessagesRef}
             className="flex-1 overflow-y-auto p-4 space-y-3 messages-container"
           >
@@ -185,25 +203,30 @@ const ChatWidget = ({ isChatOpen, setIsChatOpen }: ChatWidgetProps) => {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: idx * 0.02 }}
-                className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
+                className={`flex ${message.sender === "user" ? "justify-end" : "justify-start"}`}
               >
                 <motion.div
                   whileHover={{ scale: 1.02 }}
                   className={`max-w-[80%] p-3 rounded-xl text-sm ${
-                    message.sender === 'user'
-                      ? 'bg-gradient-to-br from-accent to-accent/80 text-white shadow-lg'
-                      : 'bg-muted/60 text-muted-foreground border border-accent/10'
+                    message.sender === "user"
+                      ? "bg-gradient-to-br from-accent to-accent/80 text-white shadow-lg"
+                      : "bg-muted/60 text-muted-foreground border border-accent/10"
                   }`}
                 >
-                  <p className="luxury-text text-sm leading-relaxed">{message.text}</p>
+                  <p className="luxury-text text-sm leading-relaxed">
+                    {message.text}
+                  </p>
                   <p className="text-xs opacity-60 mt-1">
-                    {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    {message.timestamp.toLocaleTimeString([], {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
                   </p>
                 </motion.div>
               </motion.div>
             ))}
             {isChatLoading && (
-              <motion.div 
+              <motion.div
                 className="flex justify-start"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -215,7 +238,11 @@ const ChatWidget = ({ isChatOpen, setIsChatOpen }: ChatWidgetProps) => {
                         key={`dot-${i}`}
                         className="w-2 h-2 bg-accent rounded-full"
                         animate={{ y: [0, -6, 0] }}
-                        transition={{ duration: 0.5, repeat: Infinity, delay: i * 0.1 }}
+                        transition={{
+                          duration: 0.5,
+                          repeat: Infinity,
+                          delay: i * 0.1,
+                        }}
                       />
                     ))}
                   </div>
@@ -224,7 +251,7 @@ const ChatWidget = ({ isChatOpen, setIsChatOpen }: ChatWidgetProps) => {
             )}
           </div>
 
-          <motion.div 
+          <motion.div
             className="p-3 border-t-2 border-accent/20 bg-gradient-to-r from-white/50 to-white/30 rounded-b-2xl backdrop-blur-sm flex-shrink-0"
             initial={{ y: 20 }}
             animate={{ y: 0 }}
@@ -256,7 +283,7 @@ const ChatWidget = ({ isChatOpen, setIsChatOpen }: ChatWidgetProps) => {
         </motion.div>
       )}
     </motion.div>
-  )
-}
+  );
+};
 
-export default React.memo(ChatWidget)
+export default React.memo(ChatWidget);

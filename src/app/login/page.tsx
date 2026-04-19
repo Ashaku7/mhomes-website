@@ -1,63 +1,62 @@
-'use client'
+"use client";
 
-import { useState, useEffect } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
-import Link from 'next/link'
-import Image from 'next/image'
-import { motion } from 'framer-motion'
-import { useAuth } from '@/context/AuthContext'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Card, CardContent, CardHeader } from '@/components/ui/card'
-import { Mail, Lock, Loader2, AlertCircle } from 'lucide-react'
+import { Suspense, useState, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
+import Image from "next/image";
+import { motion } from "framer-motion";
+import { useAuth } from "@/context/AuthContext";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Mail, Lock, Loader2, AlertCircle } from "lucide-react";
 
-export default function LoginPage() {
-  const router = useRouter()
-  const searchParams = useSearchParams()
-  const redirectTo = searchParams.get('redirect') || '/'
-  const { login, isAuthenticated, isLoading: authLoading } = useAuth()
+function LoginPageContent() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirectTo = searchParams.get("redirect") || "/";
+  const { login, isAuthenticated, isLoading: authLoading } = useAuth();
 
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   // Redirect if already logged in
   useEffect(() => {
     if (!authLoading && isAuthenticated) {
-      router.replace(redirectTo)
+      router.replace(redirectTo);
     }
-  }, [isAuthenticated, authLoading, router, redirectTo])
+  }, [isAuthenticated, authLoading, router, redirectTo]);
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setError(null)
-    setIsSubmitting(true)
+    e.preventDefault();
+    setError(null);
+    setIsSubmitting(true);
     try {
-      await login(email, password)
-      router.replace(redirectTo)
+      await login(email, password);
+      router.replace(redirectTo);
     } catch (err: any) {
       const msg =
         err?.response?.data?.message ||
-        'Invalid email or password. Please try again.'
-      setError(msg)
+        "Invalid email or password. Please try again.";
+      setError(msg);
     } finally {
-      setIsSubmitting(false)
+      setIsSubmitting(false);
     }
-  }
+  };
 
   if (authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-stone-950">
         <Loader2 className="w-8 h-8 animate-spin text-amber-500" />
       </div>
-    )
+    );
   }
 
   return (
     <div className="min-h-screen bg-stone-950 flex items-center justify-center p-4 relative overflow-hidden">
-
       {/* Background glow */}
       <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[500px] h-[500px] bg-amber-500/5 rounded-full blur-[120px] pointer-events-none" />
 
@@ -78,7 +77,10 @@ export default function LoginPage() {
               className="object-contain mb-3"
             />
           </Link>
-          <h1 className="text-2xl font-light tracking-widest text-amber-100" style={{ fontFamily: 'Playfair Display, serif' }}>
+          <h1
+            className="text-2xl font-light tracking-widest text-amber-100"
+            style={{ fontFamily: "Playfair Display, serif" }}
+          >
             MHOMES
           </h1>
           <p className="text-stone-500 text-xs tracking-widest uppercase mt-1">
@@ -98,7 +100,6 @@ export default function LoginPage() {
 
           <CardContent className="px-8 pb-8 pt-4">
             <form onSubmit={handleSubmit} className="space-y-5">
-
               {/* Email */}
               <div className="space-y-1.5">
                 <Label htmlFor="email" className="text-stone-400 text-sm">
@@ -163,14 +164,14 @@ export default function LoginPage() {
                     Signing in…
                   </>
                 ) : (
-                  'Sign In'
+                  "Sign In"
                 )}
               </Button>
             </form>
 
             {/* Register link */}
             <p className="text-center text-stone-500 text-sm mt-6">
-              Don&apos;t have an account?{' '}
+              Don&apos;t have an account?{" "}
               <Link
                 href="/register"
                 className="text-amber-400 hover:text-amber-300 font-medium transition-colors"
@@ -188,5 +189,19 @@ export default function LoginPage() {
         </p>
       </motion.div>
     </div>
-  )
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center bg-stone-950">
+          <Loader2 className="w-8 h-8 animate-spin text-amber-500" />
+        </div>
+      }
+    >
+      <LoginPageContent />
+    </Suspense>
+  );
 }

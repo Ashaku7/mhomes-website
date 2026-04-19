@@ -80,13 +80,17 @@ const InvoicePrintView = ({ bookingId }: InvoicePrintViewProps) => {
           console.error('Could not fetch invoice from admin endpoint:', e)
         }
 
-        // Fetch payment details from booking data
+        // Prefer invoice payments because that endpoint includes transactionId.
+        const paymentEntries = invoice?.booking?.payments?.length
+          ? invoice.booking.payments
+          : booking?.payments || []
+
         let paymentMethod = '—'
         let transactionId: string | null = null
-        
-        if (booking?.payments && booking.payments.length > 0) {
+
+        if (paymentEntries.length > 0) {
           // Get the first paid payment or any payment
-          const payment = booking.payments.find((p: any) => p?.paymentStatus === 'paid') || booking.payments[0]
+          const payment = paymentEntries.find((p: any) => p?.paymentStatus === 'paid') || paymentEntries[0]
           if (payment) {
             paymentMethod = payment.paymentMethod || 'Cash'
             transactionId = payment.transactionId || null
@@ -103,10 +107,11 @@ const InvoicePrintView = ({ bookingId }: InvoicePrintViewProps) => {
           const expenseStrings = booking.extraExpense.split(',').map((exp: string) => exp.trim())
           console.log('[Invoice] expense strings after split:', expenseStrings)
           expenseStrings.forEach((exp: string) => {
-            const parts = exp.split('-')
-            if (parts.length === 2) {
-              const label = parts[0].trim()
-              const amount = parseFloat(parts[1])
+            const lastDashIndex = exp.lastIndexOf('-')
+            if (lastDashIndex > 0) {
+              const label = exp.slice(0, lastDashIndex).trim()
+              const amountStr = exp.slice(lastDashIndex + 1).replace(/[^0-9.]/g, '')
+              const amount = parseFloat(amountStr)
               if (!isNaN(amount) && amount > 0) {
                 extraExpenses.push({ label, amount })
                 extraChargesTotal += amount
@@ -127,8 +132,12 @@ const InvoicePrintView = ({ bookingId }: InvoicePrintViewProps) => {
         const checkOutDate = new Date(booking.checkOut)
         const nights = Math.ceil((checkOutDate.getTime() - checkInDate.getTime()) / (1000 * 60 * 60 * 24))
 
-        // Room amount = price per night × number of nights × number of rooms
-        const roomAmount = roomPrice * nights * roomCount
+        // Room amount = sum of all room nightly prices × nights
+        const roomNightlyTotal = (booking.rooms || []).reduce((sum: number, room: any) => {
+          const price = parseFloat(String(room?.pricePerNight ?? 0))
+          return sum + (isNaN(price) ? 0 : price)
+        }, 0)
+        const roomAmount = roomNightlyTotal * nights
 
         // If no invoice in database, create temporary one with correct total (room + extras)
         if (!invoice) {
@@ -178,9 +187,10 @@ const InvoicePrintView = ({ bookingId }: InvoicePrintViewProps) => {
         // Determine room type label
         const roomTypeLabel = booking.rooms?.[0]?.roomType === 'premium_plus' ? 'Premium Plus' : 'Premium'
 
-        // Use invoice totalAmount from database (already includes room + extra charges)
-        // If no invoice yet, calculate from booking data
-        const totalAmount = invoice?.totalAmount || (roomAmount + extraChargesTotal)
+        // Prefer computed total to avoid stale/incorrect persisted values.
+        const computedTotal = roomAmount + extraChargesTotal
+        const persistedTotal = parseFloat(String(invoice?.totalAmount ?? NaN))
+        const totalAmount = Number.isFinite(persistedTotal) && persistedTotal > 0 ? persistedTotal : computedTotal
 
         setInvoiceData({
           invoiceNumber: invoice?.invoiceNumber || 'INV-PENDING',

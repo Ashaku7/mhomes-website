@@ -1,16 +1,20 @@
-import { Resend } from 'resend'
+import { Resend } from "resend";
 
-const resend = new Resend(process.env.RESEND_API_KEY)
-const HOTEL_EMAIL = process.env.HOTEL_EMAIL
-const FROM_EMAIL = 'onboarding@resend.dev'
+const resend = new Resend(process.env.RESEND_API_KEY);
+const HOTEL_EMAIL = process.env.HOTEL_EMAIL;
+const FROM_EMAIL = "onboarding@resend.dev";
 
 /**
  * Format date to readable format (e.g., "April 5, 2026")
  */
 const formatDate = (dateStr: string): string => {
-  const date = new Date(dateStr + 'T00:00:00Z')
-  return date.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
-}
+  const date = new Date(dateStr + "T00:00:00Z");
+  return date.toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+};
 
 /**
  * Send contact form email to hotel
@@ -20,12 +24,12 @@ export const sendContactEmail = async (
   lastName: string,
   email: string,
   subject: string,
-  message: string
+  message: string,
 ): Promise<boolean> => {
   try {
     if (!HOTEL_EMAIL) {
-      console.error('[EMAIL] HOTEL_EMAIL not configured')
-      return false
+      console.error("[EMAIL] HOTEL_EMAIL not configured");
+      return false;
     }
 
     const htmlContent = `
@@ -37,28 +41,30 @@ export const sendContactEmail = async (
           <p><strong>Subject:</strong> ${subject}</p>
           <hr style="border: none; border-top: 1px solid #E8E4DC; margin: 20px 0;">
           <p><strong>Message:</strong></p>
-          <p>${message.replace(/\n/g, '<br>')}</p>
+          <p>${message.replace(/\n/g, "<br>")}</p>
           <hr style="border: none; border-top: 1px solid #E8E4DC; margin: 20px 0;">
           <p><small style="color: #6B6B6B;">Sent from MHOMES Resort contact form</small></p>
         </body>
       </html>
-    `
+    `;
 
     await resend.emails.send({
       from: FROM_EMAIL,
       to: HOTEL_EMAIL,
       subject: `New Contact Form Submission - MHOMES Resort`,
       html: htmlContent,
-      reply_to: email
-    })
+      replyTo: email,
+    });
 
-    console.log(`[EMAIL] Contact form email sent successfully to ${HOTEL_EMAIL}`)
-    return true
+    console.log(
+      `[EMAIL] Contact form email sent successfully to ${HOTEL_EMAIL}`,
+    );
+    return true;
   } catch (error) {
-    console.error('[EMAIL] Failed to send contact email:', error)
-    return false
+    console.error("[EMAIL] Failed to send contact email:", error);
+    return false;
   }
-}
+};
 
 /**
  * Send booking confirmation email to guest
@@ -71,18 +77,21 @@ export const sendBookingConfirmation = async (
   checkOut: string,
   roomType: string,
   roomCount: number,
-  totalAmount: number
+  totalAmount: number,
 ): Promise<boolean> => {
   try {
     // Skip email if no guest email
     if (!guestEmail) {
-      console.log('[EMAIL] Skipping booking confirmation - no guest email provided')
-      return false
+      console.log(
+        "[EMAIL] Skipping booking confirmation - no guest email provided",
+      );
+      return false;
     }
 
-    const checkInFormatted = formatDate(checkIn)
-    const checkOutFormatted = formatDate(checkOut)
-    const roomTypeFormatted = roomType === 'premium_plus' ? 'Premium Plus' : 'Premium'
+    const checkInFormatted = formatDate(checkIn);
+    const checkOutFormatted = formatDate(checkOut);
+    const roomTypeFormatted =
+      roomType === "premium_plus" ? "Premium Plus" : "Premium";
 
     const htmlContent = `
       <html>
@@ -125,7 +134,7 @@ export const sendBookingConfirmation = async (
                 </div>
                 <div>
                   <p style="color: #6B6B6B; margin: 0 0 5px 0; font-size: 12px; text-transform: uppercase;">Total Amount</p>
-                  <p style="color: #C9A84C; margin: 0; font-weight: 600;">₹${totalAmount.toLocaleString('en-IN')}</p>
+                  <p style="color: #C9A84C; margin: 0; font-weight: 600;">₹${totalAmount.toLocaleString("en-IN")}</p>
                 </div>
               </div>
 
@@ -159,20 +168,22 @@ export const sendBookingConfirmation = async (
           </div>
         </body>
       </html>
-    `
+    `;
 
     await resend.emails.send({
       from: FROM_EMAIL,
       to: guestEmail,
       subject: `Reservation Received - MHOMES Resort [${bookingReference}]`,
       html: htmlContent,
-      reply_to: HOTEL_EMAIL
-    })
+      replyTo: HOTEL_EMAIL,
+    });
 
-    console.log(`[EMAIL] Booking confirmation email sent to ${guestEmail} (Ref: ${bookingReference})`)
-    return true
+    console.log(
+      `[EMAIL] Booking confirmation email sent to ${guestEmail} (Ref: ${bookingReference})`,
+    );
+    return true;
   } catch (error) {
-    console.error('[EMAIL] Failed to send booking confirmation:', error)
-    return false
+    console.error("[EMAIL] Failed to send booking confirmation:", error);
+    return false;
   }
-}
+};

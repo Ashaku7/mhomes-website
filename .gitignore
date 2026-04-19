@@ -43,3 +43,6 @@ next-env.d.ts
 # backend
 backend/node_modules/
 backend/.env
+
+# local split app (not deployed/pushed from this repo)
+/admin-app/

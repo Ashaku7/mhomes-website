@@ -1,13 +1,13 @@
-import { prisma } from '@/lib/prisma'
+import { prisma } from "@/lib/prisma";
 
 export const generateBookingReference = async (): Promise<string> => {
   try {
     // Get today's date as YYMMDD string
-    const today = new Date()
-    const year = String(today.getFullYear()).slice(-2) // Last 2 digits of year
-    const month = String(today.getMonth() + 1).padStart(2, '0')
-    const day = String(today.getDate()).padStart(2, '0')
-    const dateStr = `${year}${month}${day}`
+    const today = new Date();
+    const year = String(today.getFullYear()).slice(-2); // Last 2 digits of year
+    const month = String(today.getMonth() + 1).padStart(2, "0");
+    const day = String(today.getDate()).padStart(2, "0");
+    const dateStr = `${year}${month}${day}`;
 
     // Use raw Prisma query to increment counter
     // INSERT ... ON CONFLICT ... DO UPDATE ensures atomic increment
@@ -16,18 +16,18 @@ export const generateBookingReference = async (): Promise<string> => {
       VALUES (${dateStr}, 1)
       ON CONFLICT (date) DO UPDATE SET count = daily_counters.count + 1
       RETURNING count
-    `
+    `;
 
     // Result is an array with one object containing the count
-    const count = result[0].count
+    const count = result[0].count;
 
     // Pad count to minimum 2 digits
-    const paddedCount = String(count).padStart(2, '0')
+    const paddedCount = String(count).padStart(2, "0");
 
     // Return formatted reference
-    return `MH-${dateStr}-${paddedCount}`
+    return `MH-${dateStr}-${paddedCount}`;
   } catch (error: any) {
-    console.error('[ERROR] Failed to generate booking reference:', error)
-    throw error
+    console.error("[ERROR] Failed to generate booking reference:", error);
+    throw error;
   }
-}
+};

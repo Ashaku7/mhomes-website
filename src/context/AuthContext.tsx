@@ -1,11 +1,11 @@
-'use client';
+"use client";
 
 // src/context/AuthContext.tsx
 // Provides authentication state and actions to the entire app.
 
-import { createContext, useContext, useEffect, useState } from 'react';
-import type { ReactNode } from 'react';
-import { authApi, setCookie, deleteCookie } from '@/lib/api';
+import { createContext, useContext, useEffect, useState } from "react";
+import type { ReactNode } from "react";
+import { authApi, setCookie, deleteCookie } from "@/lib/api";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -13,7 +13,7 @@ export interface User {
   id: number;
   name: string;
   email: string;
-  role: 'guest' | 'admin' | 'reception';
+  role: "guest" | "admin" | "reception";
 }
 
 interface AuthContextValue {
@@ -21,7 +21,12 @@ interface AuthContextValue {
   isLoading: boolean;
   isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<void>;
-  register: (name: string, email: string, phone: string, password: string) => Promise<void>;
+  register: (
+    name: string,
+    email: string,
+    phone: string,
+    password: string,
+  ) => Promise<void>;
   logout: () => void;
 }
 
@@ -56,7 +61,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = async (email: string, password: string) => {
     const res = await authApi.login(email, password);
     const { token, user: userData } = res.data.data;
-    setCookie('MHOMES_token', token, 1); // 1 day
+    setCookie("MHOMES_token", token, 1); // 1 day
     setUser(userData);
   };
 
@@ -65,20 +70,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     name: string,
     email: string,
     phone: string,
-    password: string
+    password: string,
   ) => {
     const res = await authApi.register(name, email, phone, password);
     const { token, user: userData } = res.data.data;
-    setCookie('MHOMES_token', token, 1); // 1 day
+    setCookie("MHOMES_token", token, 1); // 1 day
     setUser(userData);
   };
 
   // ── Logout ────────────────────────────────────────────────────────────────
   const logout = () => {
-    deleteCookie('MHOMES_token');
+    deleteCookie("MHOMES_token");
     setUser(null);
-    if (typeof window !== 'undefined') {
-      window.location.href = '/';
+    if (typeof window !== "undefined") {
+      window.location.href = "/";
     }
   };
 
@@ -103,7 +108,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 export function useAuth(): AuthContextValue {
   const ctx = useContext(AuthContext);
   if (!ctx) {
-    throw new Error('useAuth must be used inside <AuthProvider>');
+    throw new Error("useAuth must be used inside <AuthProvider>");
   }
   return ctx;
 }

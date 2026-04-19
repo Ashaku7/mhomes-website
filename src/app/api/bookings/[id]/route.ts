@@ -1,17 +1,20 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from "next/server";
 
-export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+) {
   try {
-    const { id } = await params
-    const bookingId = parseInt(id)
+    const { id } = await params;
+    const bookingId = parseInt(id);
     if (isNaN(bookingId)) {
       return NextResponse.json(
-        { success: false, message: 'Invalid booking ID' },
-        { status: 400 }
-      )
+        { success: false, message: "Invalid booking ID" },
+        { status: 400 },
+      );
     }
 
-    const prisma = (await import('@/lib/prisma')).default
+    const prisma = (await import("@/lib/prisma")).default;
 
     const booking = await prisma.booking.findUnique({
       where: { id: bookingId },
@@ -24,13 +27,13 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         },
         payments: true,
       },
-    })
+    });
 
     if (!booking) {
       return NextResponse.json(
-        { success: false, message: 'Booking not found' },
-        { status: 404 }
-      )
+        { success: false, message: "Booking not found" },
+        { status: 404 },
+      );
     }
 
     return NextResponse.json(
@@ -58,17 +61,17 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
           payments: booking.payments,
         },
       },
-      { status: 200 }
-    )
+      { status: 200 },
+    );
   } catch (err: any) {
-    console.error('[GET /api/bookings/[id]] Error:', {
+    console.error("[GET /api/bookings/[id]] Error:", {
       message: err.message,
       statusCode: err.statusCode,
-      stack: err.stack?.split('\n').slice(0, 3),
-    })
+      stack: err.stack?.split("\n").slice(0, 3),
+    });
     return NextResponse.json(
       { success: false, message: err.message },
-      { status: err.statusCode || 500 }
-    )
+      { status: err.statusCode || 500 },
+    );
   }
 }
