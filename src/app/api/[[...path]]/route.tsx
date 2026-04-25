@@ -75,76 +75,79 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // Reviews endpoint - Fetch from Google Places API
+    // Reviews endpoint - Fetch from Google Places API, fallback to curated reviews
     if (pathname === "/api/reviews") {
+      const fallbackReviews = [
+        {
+          id: "1",
+          name: "Akash Ram",
+          location: "Chennai, India",
+          rating: 5,
+          text: "Peaceful atmosphere, spotless room, and genuinely warm service throughout our stay.",
+          date: "April 24, 2026",
+          source: "fallback",
+          verified: true,
+        },
+        {
+          id: "2",
+          name: "Vivek R",
+          location: "Chennai, India",
+          rating: 5,
+          text: "Booking was smooth, the room was clean, and the staff made everything feel effortless.",
+          date: "April 24, 2026",
+          source: "fallback",
+          verified: true,
+        },
+        {
+          id: "3",
+          name: "R Ashok",
+          location: "Mumbai, India",
+          rating: 5,
+          text: "Loved the calm ambience and the room comfort was excellent after a long trip.",
+          date: "April 24, 2026",
+          source: "fallback",
+          verified: true,
+        },
+        {
+          id: "4",
+          name: "Vishal",
+          location: "Delhi, India",
+          rating: 5,
+          text: "Beautiful property, quick support from staff, and an overall stay that felt premium.",
+          date: "April 24, 2026",
+          source: "fallback",
+          verified: true,
+        },
+        {
+          id: "5",
+          name: "Kaamesh",
+          location: "Chennai, India",
+          rating: 5,
+          text: "Everything from check-in to checkout was smooth, comfortable, and very memorable.",
+          date: "April 24, 2026",
+          source: "fallback",
+          verified: true,
+        },
+      ];
+
       try {
         const placeId = process.env.GOOGLE_PLACE_ID;
         const googleApiKey = process.env.GOOGLE_PLACES_API_KEY;
 
-        // If Google API is not configured, return fallback reviews (guest testimonials)
+        // If Google API is not configured, return fallback reviews
         if (
           !placeId ||
           !googleApiKey ||
           googleApiKey === "your_google_places_api_key"
         ) {
           return NextResponse.json({
-            reviews: [
-              {
-                id: "1",
-                name: "Arjun Mehta",
-                location: "Mumbai, India",
-                rating: 5,
-                text: "Stayed in the Premium Plus Room for our anniversary and it exceeded every expectation. The room was spotless, staff were incredibly warm, and the whole experience felt very personal. Highly recommend MHOMES to anyone looking for a peaceful luxury getaway.",
-                date: "April 15, 2026",
-                source: "guest",
-                verified: true,
-              },
-              {
-                id: "2",
-                name: "Priya Subramaniam",
-                location: "Chennai, India",
-                rating: 5,
-                text: "We booked two Premium Rooms for a family trip and the entire process from online booking to check-out was seamless. The rooms were spacious, well-maintained, and the team made sure every need was taken care of. Will definitely be coming back!",
-                date: "April 12, 2026",
-                source: "guest",
-                verified: true,
-              },
-              {
-                id: "3",
-                name: "Karthik Rajan",
-                location: "Coimbatore, India",
-                rating: 5,
-                text: "MHOMES Resort is a hidden gem. The ambience is serene, the rooms are beautifully maintained, and the staff go out of their way to make you feel at home. Checked in for a weekend trip and honestly did not want to leave.",
-                date: "April 8, 2026",
-                source: "guest",
-                verified: true,
-              },
-              {
-                id: "4",
-                name: "Sneha & Vikram Nair",
-                location: "Bangalore, India",
-                rating: 5,
-                text: "Chose MHOMES for our honeymoon and it was the best decision we made. The Premium Plus Room was stunning, the privacy was great, and the staff were so thoughtful — they even surprised us with a small decoration in the room. Perfect in every way.",
-                date: "April 5, 2026",
-                source: "guest",
-                verified: true,
-              },
-              {
-                id: "5",
-                name: "Deepa Krishnamurthy",
-                location: "Madurai, India",
-                rating: 5,
-                text: "Attended a small family gathering here and the experience was wonderful. Booking multiple rooms was easy, the property is well-kept, and the overall vibe is calm and luxurious. Great value for the quality you get. Strongly recommend MHOMES Resort.",
-                date: "March 28, 2026",
-                source: "guest",
-                verified: true,
-              },
-            ],
+            reviews: fallbackReviews,
             averageRating: 5.0,
-            totalReviews: 5,
+            totalReviews: fallbackReviews.length,
             source: "fallback",
-            message:
-              "Displaying guest testimonials. Configure Google Places API for real Google reviews.",
+            businessUrl:
+              process.env.NEXT_PUBLIC_GOOGLE_BUSINESS_URL ||
+              "https://www.google.com/maps",
           });
         }
 
@@ -168,7 +171,6 @@ export async function GET(request: NextRequest) {
         const averageRating = googleData.result?.rating || 0;
         const totalReviews = googleData.result?.user_ratings_total || 0;
 
-        // Transform Google reviews to match our format
         const formattedReviews = reviews.map((review: any) => ({
           id: review.time?.toString() || Math.random().toString(),
           name: review.author_name || "Anonymous",
@@ -197,43 +199,14 @@ export async function GET(request: NextRequest) {
       } catch (error) {
         console.error("Reviews API error:", error);
 
-        // Return fallback reviews on error
         return NextResponse.json({
-          reviews: [
-            {
-              id: "1",
-              name: "Sarah Johnson",
-              location: "New York, USA",
-              rating: 5,
-              text: "Absolutely magical experience! The overwater villa was beyond our dreams, and the service was impeccable.",
-              date: "November 15, 2025",
-              source: "fallback",
-              verified: true,
-            },
-            {
-              id: "2",
-              name: "Marco Rodriguez",
-              location: "Madrid, Spain",
-              rating: 5,
-              text: "The perfect honeymoon destination. Every detail was carefully planned.",
-              date: "November 10, 2025",
-              source: "fallback",
-              verified: true,
-            },
-            {
-              id: "3",
-              name: "Emily Chen",
-              location: "Singapore",
-              rating: 5,
-              text: "Luxury redefined. The attention to detail and personalized service made our anniversary truly unforgettable.",
-              date: "November 5, 2025",
-              source: "fallback",
-              verified: true,
-            },
-          ],
-          averageRating: 4.8,
-          totalReviews: 247,
+          reviews: fallbackReviews,
+          averageRating: 5.0,
+          totalReviews: fallbackReviews.length,
           source: "fallback",
+          businessUrl:
+            process.env.NEXT_PUBLIC_GOOGLE_BUSINESS_URL ||
+            "https://www.google.com/maps",
           error: "Could not fetch Google reviews at this time",
         });
       }
@@ -398,164 +371,6 @@ export async function POST(request: NextRequest) {
         timestamp: new Date().toISOString(),
         inquiryId: `INQ-${Date.now()}`,
       });
-    }
-
-    // Chatbot endpoint
-    if (pathname === "/api/chat") {
-      const body = await request.json();
-      const userMessage = body.message || "";
-
-      const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "google_api_key";
-
-      if (GEMINI_API_KEY === "YOUR_GEMINI_API_KEY_HERE") {
-        // Fallback to rule-based if no API key
-        let response =
-          "I'm here to help with your questions about MHOMES Resort. How can I assist you today?";
-        const lowerMessage = userMessage.toLowerCase();
-
-        if (
-          lowerMessage.includes("room") ||
-          lowerMessage.includes("accommodation")
-        ) {
-          response =
-            "We offer luxurious accommodations including Ocean Villas, Beach Suites, Premium Rooms, and Premium Plus Rooms. Prices range from $320 to $1,200 per night. Would you like more details on any specific room type?";
-        } else if (
-          lowerMessage.includes("price") ||
-          lowerMessage.includes("cost")
-        ) {
-          response =
-            "Our room rates vary by season and type. Ocean Villas start at $1,200/night, Beach Suites at $800/night, Premium Rooms at $450/night, and Premium Plus Rooms at $320/night. Contact us for current availability and special rates.";
-        } else if (
-          lowerMessage.includes("dining") ||
-          lowerMessage.includes("restaurant") ||
-          lowerMessage.includes("food")
-        ) {
-          response =
-            "Enjoy world-class dining at our Azure Restaurant (Michelin-starred), Sunset Lounge (bar & grill), and Poolside Café. We serve international fusion, Mediterranean, and continental cuisine.";
-        } else if (
-          lowerMessage.includes("spa") ||
-          lowerMessage.includes("wellness") ||
-          lowerMessage.includes("massage")
-        ) {
-          response =
-            "Our luxury spa offers rejuvenating treatments inspired by ancient healing traditions. Book a couples massage or individual therapy session for ultimate relaxation.";
-        } else if (
-          lowerMessage.includes("activity") ||
-          lowerMessage.includes("experience") ||
-          lowerMessage.includes("water sport")
-        ) {
-          response =
-            "Experience adventure with diving, snorkeling, kayaking, sailing, and cultural tours. Our fitness center is available 24/7 with personal trainers.";
-        } else if (
-          lowerMessage.includes("contact") ||
-          lowerMessage.includes("phone") ||
-          lowerMessage.includes("email")
-        ) {
-          response =
-            "Reach us at +1 (555) 123-4567 or info@MHOMESresort.com. Our office hours are Monday-Friday 9AM-6PM, Saturday 10AM-4PM, Sunday 12PM-4PM.";
-        } else if (
-          lowerMessage.includes("location") ||
-          lowerMessage.includes("address")
-        ) {
-          response =
-            "MHOMES Resort is located on Tropical Paradise Island in the Maldives, offering pristine beaches and crystal-clear waters.";
-        } else if (
-          lowerMessage.includes("booking") ||
-          lowerMessage.includes("reservation")
-        ) {
-          response =
-            "Our online booking system is coming soon! For now, please contact our reservations team at +1 (555) 123-4567 or reservations@MHOMESresort.com to make your reservation.";
-        } else if (
-          lowerMessage.includes("payment") ||
-          lowerMessage.includes("pay")
-        ) {
-          response =
-            "We accept major credit cards, bank transfers, and digital payments. A 50% deposit is required to confirm your reservation, with the balance due upon arrival. Contact our team for payment options and assistance.";
-        } else if (
-          lowerMessage.includes("facility") ||
-          lowerMessage.includes("amenities")
-        ) {
-          response =
-            "Our resort features high-speed WiFi, valet parking, private beach access, multiple restaurants, luxury spa, 24/7 fitness center, and premium concierge services.";
-        } else if (
-          lowerMessage.includes("hello") ||
-          lowerMessage.includes("hi") ||
-          lowerMessage.includes("hey")
-        ) {
-          response =
-            "Hello! Welcome to MHOMES Resort. I'm your virtual assistant. How can I help you plan your perfect vacation?";
-        } else if (
-          lowerMessage.includes("thank") ||
-          lowerMessage.includes("thanks")
-        ) {
-          response =
-            "You're welcome! I'm glad I could help. If you have any more questions about MHOMES Resort, feel free to ask.";
-        }
-
-        return NextResponse.json({
-          response: response,
-          timestamp: new Date().toISOString(),
-        });
-      }
-
-      // Use Gemini API
-      try {
-        const prompt = `You are a helpful virtual assistant for MHOMES Resort, a luxury resort in the Maldives. Provide friendly, informative responses about the resort. Key information:
-- Location: Tropical Paradise Island, Maldives
-- Accommodations: Ocean Villas ($1,200/night), Beach Suites ($800/night), Premium Rooms ($450/night), Premium Plus Rooms ($320/night)
-- Dining: Azure Restaurant (Michelin-starred), Sunset Lounge (bar & grill), Poolside Café
-- Activities: Spa treatments, water sports (diving, snorkeling, kayaking), fitness center, cultural tours
-- Facilities: Private beach, infinity pool, high-speed WiFi, valet parking, luxury spa
-- Contact: +1 (555) 123-4567, info@MHOMESresort.com
-- Payment: Major credit cards, 50% deposit required
-- Office hours: Mon-Fri 9AM-6PM, Sat 10AM-4PM, Sun 12PM-4PM
-
-User question: ${userMessage}
-
-Respond naturally and helpfully, keeping responses concise but informative.`;
-
-        const geminiResponse = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              contents: [
-                {
-                  parts: [
-                    {
-                      text: prompt,
-                    },
-                  ],
-                },
-              ],
-            }),
-          },
-        );
-
-        if (!geminiResponse.ok) {
-          throw new Error("Gemini API error");
-        }
-
-        const geminiData = await geminiResponse.json();
-        const response =
-          geminiData.candidates?.[0]?.content?.parts?.[0]?.text ||
-          "I'm sorry, I couldn't generate a response right now. Please try again.";
-
-        return NextResponse.json({
-          response: response.trim(),
-          timestamp: new Date().toISOString(),
-        });
-      } catch (error) {
-        console.error("Gemini API error:", error);
-        return NextResponse.json({
-          response:
-            "I'm sorry, I'm having trouble connecting to my knowledge base. Please try again later or contact us directly at +1 (555) 123-4567.",
-          timestamp: new Date().toISOString(),
-        });
-      }
     }
 
     return NextResponse.json(

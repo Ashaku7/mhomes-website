@@ -475,7 +475,7 @@ export default function ReviewsPage() {
                     Address
                   </p>
                   <p className="luxury-heading text-white text-sm font-medium">
-                    Madurai, Tamil Nadu
+                    62/7, Poigaikaraipatti, Alagarkoil Road, Madurai-625301
                   </p>
                 </div>
 
@@ -484,10 +484,10 @@ export default function ReviewsPage() {
                     Phone
                   </p>
                   <a
-                    href="tel:+919791035346"
+                    href="tel:+919677943053"
                     className="luxury-heading text-accent hover:text-accent/80 text-sm font-medium transition-colors"
                   >
-                    +91 9791 035346
+                    +91 9677 943053
                   </a>
                 </div>
 
@@ -496,10 +496,10 @@ export default function ReviewsPage() {
                     Email
                   </p>
                   <a
-                    href="mailto:karthikeyan@mhomes.co.in"
+                    href="mailto:contact-us@mhomes.co.in"
                     className="luxury-heading text-accent hover:text-accent/80 text-sm font-medium transition-colors break-all"
                   >
-                    karthikeyan@mhomes.co.in
+                    contact-us@mhomes.co.in
                   </a>
                 </div>
               </div>
@@ -518,26 +518,19 @@ export default function ReviewsPage() {
           >
             <div className="flex flex-col md:flex-row items-center justify-center gap-6">
               <div className="flex gap-6 flex-wrap justify-center">
-                <a
-                  href="#"
+                <Link
+                  href="/terms-conditions"
                   className="luxury-text text-white/70 hover:text-accent text-xs font-medium transition-colors"
                 >
                   Terms & Conditions
-                </a>
+                </Link>
                 <span className="text-white/20">•</span>
-                <a
-                  href="#"
-                  className="luxury-text text-white/70 hover:text-accent text-xs font-medium transition-colors"
-                >
-                  Cookie Policy
-                </a>
-                <span className="text-white/20">•</span>
-                <a
-                  href="#"
+                <Link
+                  href="/sitemap"
                   className="luxury-text text-white/70 hover:text-accent text-xs font-medium transition-colors"
                 >
                   Sitemap
-                </a>
+                </Link>
               </div>
             </div>
           </motion.div>

@@ -1,8 +1,7 @@
-import { clerkMiddleware } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-export default clerkMiddleware(async (_auth, req) => {
+export default function middleware(req: NextRequest) {
   // Add CORS headers to all responses
   const response = NextResponse.next();
 
@@ -28,7 +27,7 @@ export default clerkMiddleware(async (_auth, req) => {
   response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
 
   return response;
-});
+}
 
 export const config = {
   matcher: ["/((?!_next|.*\\..*).*)"],

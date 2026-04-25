@@ -49,25 +49,26 @@ const BORDER_LIGHT = "#E8E4DC";
 
 const ROOM_AMENITIES = {
   premium: [
-    { icon: Wind, label: "AC" },
-    { icon: Wifi, label: "WiFi" },
-    { icon: Eye, label: "TV" },
-    { icon: Droplets, label: "Hot Water" },
-    { icon: Bell, label: "Room Service" },
-    { icon: Eye, label: "Balcony" },
+    { icon: Eye, label: "32-Inch Smart TV" },
+    { icon: UtensilsCrossed, label: "In-Room Refreshment Kit" },
+    { icon: Wind, label: "Air Conditioning" },
+    { icon: Sofa, label: "Work Desk" },
+    { icon: Wifi, label: "High-Speed WiFi" },
+    { icon: Bell, label: "Premium Toiletries" },
+    { icon: Droplets, label: "Rainfall Shower" },
+    { icon: Check, label: "Daily Housekeeping" },
   ],
   premium_plus: [
-    { icon: Wind, label: "AC" },
-    { icon: Wifi, label: "WiFi" },
-    { icon: Eye, label: "TV" },
-    { icon: Droplets, label: "Hot Water" },
-    { icon: Bell, label: "Room Service" },
-    { icon: Eye, label: "Balcony" },
-    { icon: Wine, label: "Jacuzzi" },
-    { icon: UtensilsCrossed, label: "Mini Bar" },
-    { icon: Sofa, label: "Living Area" },
+    { icon: Eye, label: "32-Inch Smart TV" },
+    { icon: UtensilsCrossed, label: "In-Room Refreshment Kit" },
+    { icon: Wind, label: "Air Conditioning" },
+    { icon: Sofa, label: "Work Desk" },
+    { icon: Wifi, label: "High-Speed WiFi" },
     { icon: Bell, label: "Premium Toiletries" },
-    { icon: MapPin, label: "Sea View" },
+    { icon: Droplets, label: "Rainfall Shower" },
+    { icon: Check, label: "Daily Housekeeping" },
+    { icon: Wine, label: "Premium Bedding" },
+    { icon: MapPin, label: "BathTub" },
   ],
 };
 
@@ -79,7 +80,7 @@ const ROOM_INFO: Record<
     sqft: 320,
     beds: "1 King Bed",
     image: "/premium.jpg",
-    price: 5500,
+    price: 6000,
   },
   premium_plus: {
     sqft: 480,
@@ -784,15 +785,6 @@ function ReservationPageContent() {
               height={160}
               className="block h-22 w-auto"
             />
-            <span
-              style={{
-                fontFamily: "Cormorant Garamond, serif",
-                color: BUTTON_BROWN,
-              }}
-              className="font-light tracking-widest text-lg hidden sm:block -ml-10 -mt-4 leading-none"
-            >
-              MHOMES
-            </span>
           </Link>
           <span className="text-gray-600 text-sm">Book Your Stay</span>
         </div>
@@ -866,7 +858,7 @@ function ReservationPageContent() {
                             options={[
                               {
                                 value: "premium",
-                                label: "Premium (₹5,500/night)",
+                              label: "Premium (₹6,000/night)",
                               },
                               {
                                 value: "premium_plus",

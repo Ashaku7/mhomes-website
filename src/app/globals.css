@@ -178,44 +178,6 @@
     border: 1px solid rgba(232, 228, 220, 0.5);
   }
 
-  .chatbot-float {
-    position: fixed;
-    bottom: 2rem;
-    right: 2rem;
-    z-index: 50;
-  }
-
-  .chatbot-border {
-    position: relative;
-    animation: rotate-border 3s linear infinite;
-  }
-
-  .chatbot-border::before {
-    content: "";
-    position: absolute;
-    top: -2px;
-    left: -2px;
-    right: -2px;
-    bottom: -2px;
-    background: linear-gradient(45deg, #c9a84c, #6b3f2a, #c9a84c, #6b3f2a);
-    background-size: 400% 400%;
-    border-radius: inherit;
-    z-index: -1;
-    animation: rotate-border 3s linear infinite;
-  }
-
-  @keyframes rotate-border {
-    0% {
-      background-position: 0% 50%;
-    }
-    50% {
-      background-position: 100% 50%;
-    }
-    100% {
-      background-position: 0% 50%;
-    }
-  }
-
   .fade-in-up {
     animation: fadeInUp 0.8s ease-out forwards;
     opacity: 0;

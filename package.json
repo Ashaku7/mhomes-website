@@ -9,8 +9,6 @@
     "lint": "eslint"
   },
   "dependencies": {
-    "@clerk/clerk-sdk-node": "^4.13.23",
-    "@clerk/nextjs": "^6.31.4",
     "@emailjs/browser": "^4.4.1",
     "@hookform/resolvers": "^5.2.1",
     "@prisma/client": "^5.22.0",

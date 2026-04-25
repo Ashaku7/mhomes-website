@@ -8,25 +8,6 @@ import axios from "axios";
 // In production: https://yourdomain.com/api/...
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "/api";
 
-// ─── Cookie Helpers ──────────────────────────────────────────────────────────
-
-export const setCookie = (name: string, value: string, days: number) => {
-  if (typeof document === "undefined") return;
-  const expires = new Date(Date.now() + days * 864e5).toUTCString();
-  document.cookie = `${name}=${encodeURIComponent(value)}; expires=${expires}; path=/; SameSite=Strict`;
-};
-
-export const getCookie = (name: string): string | null => {
-  if (typeof document === "undefined") return null;
-  const match = document.cookie.match(new RegExp(`(?:^|; )${name}=([^;]*)`));
-  return match ? decodeURIComponent(match[1]) : null;
-};
-
-export const deleteCookie = (name: string) => {
-  if (typeof document === "undefined") return;
-  document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
-};
-
 // ─── Axios Instance ──────────────────────────────────────────────────────────
 
 const api = axios.create({
@@ -34,47 +15,6 @@ const api = axios.create({
   headers: { "Content-Type": "application/json" },
   timeout: 10000,
 });
-
-// Attach token from cookie on every request
-api.interceptors.request.use((config) => {
-  const token = getCookie("MHOMES_token");
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-});
-
-// On 401, clear token and redirect to login.
-// EXCEPTION: getMe() (/api/auth/me) returning 401 just means "not logged in" — never redirect for it.
-api.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    const requestUrl: string = error.config?.url || "";
-    const isGetMe = requestUrl.includes("/api/auth/me");
-    if (error.response?.status === 401 && !isGetMe) {
-      deleteCookie("MHOMES_token");
-      if (typeof window !== "undefined") {
-        window.location.href = "/login";
-      }
-    }
-    return Promise.reject(error);
-  },
-);
-
-// ─── Types ───────────────────────────────────────────────────────────────────
-
-export interface User {
-  id: number;
-  name: string;
-  email: string;
-  role: "guest" | "admin" | "reception";
-}
-
-export interface AuthResponse {
-  user: User;
-  token: string;
-  message: string;
-}
 
 export interface AvailableRoomsParams {
   checkIn: string;
@@ -109,26 +49,6 @@ export interface BookingFilters {
   source?: "online" | "offline";
   date?: string;
 }
-
-// ─── AUTH ────────────────────────────────────────────────────────────────────
-
-export const authApi = {
-  register: (name: string, email: string, phone: string, password: string) =>
-    api.post<{ success: boolean; data: AuthResponse }>("/api/auth/register", {
-      name,
-      email,
-      phone,
-      password,
-    }),
-
-  login: (email: string, password: string) =>
-    api.post<{ success: boolean; data: AuthResponse }>("/api/auth/login", {
-      email,
-      password,
-    }),
-
-  getMe: () => api.get<{ success: boolean; data: User }>("/api/auth/me"),
-};
 
 // ─── ROOMS ───────────────────────────────────────────────────────────────────
 

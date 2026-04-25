@@ -37,7 +37,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
-import ChatWidget from '@/components/ChatWidget'
 
 // ═════════════════════════════════════════════════════════════════════════════
 // DATE RANGE PICKER COMPONENT
@@ -124,6 +123,18 @@ const gallerySlides = [
     image: '/entrance.jpg',
     title: 'WOYAGE - DAYCATIONS',
     description: 'Indulge in a day of luxury and relaxation at our beautiful resort.'
+  },
+  {
+    key: 'fountain-show',
+    image: '/fountain.png',
+    title: 'FOUNTAIN - NIGHT SHOW',
+    description: 'Watch water, lights, and music come alive in a dazzling fountain spectacle every evening.'
+  },
+  {
+    key: 'aquarium-lounge',
+    image: '/aquarium.png',
+    title: 'AQUARIUM - MARINE LOUNGE',
+    description: 'Step into an immersive underwater world where vibrant marine life turns every moment into wonder.'
   }
 ]
 
@@ -597,7 +608,6 @@ function ContactFormComponent() {
 export default function Home() {
   const router = useRouter()
   const [isMenuOpen, setIsMenuOpen] = useState(false)
-  const [isChatOpen, setIsChatOpen] = useState(false)
   const [isPageLoading, setIsPageLoading] = useState(true)
   const [lightboxImage, setLightboxImage] = useState<string | null>(null)
   const [selectedAmenitiesRoom, setSelectedAmenitiesRoom] = useState<string | null>(null)
@@ -775,11 +785,11 @@ export default function Home() {
       description: 'Sophisticated rooms with modern amenities and garden or pool views',
       image: "/premium.jpg",
       images: ["/premium.jpg", "/bathroom.jpg", "/outside.jpg"],
-      price: '₹5500/Night',
-      bedType: 'Queen Bed',
+      price: '₹6000/Night',
+      bedType: 'King Bed',
       sqft: '45 sqm',
       maxGuests: '2',
-      features: ['Pool View', 'Queen Bed', '45 sqm', 'Work Desk']
+      features: ['Pool View', 'King Bed', '45 sqm', 'Work Desk']
     },
     {
       name: 'Premium Plus Room',
@@ -787,16 +797,16 @@ export default function Home() {
       image: "/deluxe.jpg",
       images: ["/premium-plus.jpg", "/bathroom.jpg", "/outside.jpg"],
       price: '₹6500/Night',
-      bedType: 'Double Bed',
+      bedType: 'King Bed',
       sqft: '35 sqm',
       maxGuests: '2',
-      features: ['Garden View', 'Double Bed', '35 sqm', 'Work Desk']
+      features: ['Garden View', 'King Bed', '35 sqm', 'Work Desk']
     }
   ]
 
   const roomAmenities = {
-    'Premium Room': ['32-inch Smart TV', 'Premium Bedding', 'Rainfall Shower', 'Air Conditioning', 'Work Desk', 'High-Speed WiFi', 'Flat-screen TV','Premium Toiletries','Walk-In Shower', 'Daily Housekeeping'],
-    'Premium Plus Room': ['42-inch Smart TV','High-Speed WiFi', 'Seating Area','Air Conditioning', 'Rainfall Shower','Premium Toiletries','Work Desk', 'High-Speed WiFi','BathTub', 'Daily Cleaning']
+    'Premium Room': ['32-Inch Smart TV', 'In-Room Refreshment Kit', 'Air Conditioning', 'Work Desk', 'High-Speed WiFi', 'Premium Toiletries','Rainfall Shower', 'Daily Housekeeping'],
+    'Premium Plus Room': ['32-Inch Smart TV','In-Room Refreshment Kit','Air Conditioning','Work Desk','High-Speed WiFi', 'Premium Toiletries','Rainfall Shower','Daily Housekeeping','Premium Bedding','BathTub']
   }
 
   const testimonials = [
@@ -839,10 +849,10 @@ export default function Home() {
 
   const amenities = [
     { icon: Wifi, name: 'High-Speed WiFi', description: 'Complimentary throughout resort' },
-    { icon: Car, name: 'Valet Parking', description: 'Secure parking with valet service' },
+    { icon: Car, name: 'Parking', description: 'Private and secure parking' },
     { icon: Activity, name: 'Pickleball', description: 'Outdoor court available for engaging physical activities' },
-    { icon: Bath, name: 'Swimming Pool', description: 'A calm, cozy pool perfect for a refreshing dip.' },
-    { icon: MapPin, name: 'Arulmigu Kallazhagar Sundararaja Perumal Temple', description: 'Nearby cultural landmark and local temples' }
+    { icon: Bath, name: 'Kids Pool', description: 'A calm, cozy pool perfect for a refreshing dip.' },
+    { icon: MapPin, name: 'Kallazhagar Perumal Temple', description: 'Nearby cultural landmark and religious attraction' }
   ]
 
   const storyData = [
@@ -858,12 +868,12 @@ export default function Home() {
     },
     {
       word: 'Meen',
-      description: 'The fish, symbol of life, movement, and the boundless ocean that surrounds our paradise resort. Meen represents freedom, harmony with nature, and the gentle flow of luxury that permeates every experience. Our waters teem with life, just as our resort teems with unforgettable adventures.',
+      description: 'The fish, symbol of life, movement, and the boundless ocean that surrounds our paradise resort. Meen represents freedom, harmony with nature, and the gentle flow of luxury that permeates every experience. Our waters teem with life, just as our resort teems with unforgettable experiences.',
       image: '/fish.png'
     },
     {
       word: 'Meena',
-      description: 'Our visionary founder whose passion and dreams transformed an island into a sanctuary of luxury and wonder. Meena\'s dedication to excellence and unwavering commitment to guest happiness is woven into the very fabric of MHOMES Resort. Her legacy is every smile, every memory, and every magical moment our guests experience.',
+      description: 'The "M" also stands for Meena - the heart of our family, whose love is the foundation of our family. Built on her land and shaped by her love, made this more than a place - a home.',
       image: '/MHOMES-logo.png'
     }
   ]
@@ -1406,10 +1416,6 @@ export default function Home() {
             <h2 className="luxury-heading mb-6" style={{ fontSize: 'clamp(32px, 4vw, 56px)', fontWeight: 400, letterSpacing: '-0.02em', color: '#1A1A1A' }}>
               Luxury Redefined
             </h2>
-            <p className="luxury-text text-muted-foreground" style={{ fontWeight: 300, fontSize: '16px', color: '#4A4A4A', lineHeight: 1.8, maxWidth: '600px', margin: '0 auto' }}>
-              Nestled in pristine waters, MHOMES Resort offers an unparalleled luxury experience.
-              From overwater villas to world-class amenities, every detail is crafted to perfection.
-            </p>
           </motion.div>
 
           {/* Premium Amenities Grid - Symmetric */}
@@ -1925,11 +1931,6 @@ export default function Home() {
                     >
                       {slide.description}
                     </motion.p>
-                    <motion.div whileHover={{ x: 5 }}>
-                      <Button variant="link" className="text-accent text-lg font-semibold hover:text-accent/80">
-                        DISCOVER MORE <ArrowRight className="ml-2 w-4 h-4" />
-                      </Button>
-                    </motion.div>
                   </motion.div>
                 </div>
               </motion.div>
@@ -2274,7 +2275,7 @@ export default function Home() {
                     </div>
                     <div>
                       <p className="luxury-heading font-bold text-lg text-primary mb-1">Resort Address</p>
-                      <p className="luxury-text text-muted-foreground text-lg">Madurai, Tamil Nadu</p>
+                      <p className="luxury-text text-muted-foreground text-lg">62/7, Poigaikaraipatti, Alagarkoil Road, Madurai-625301</p>
                     </div>
                   </div>
 
@@ -2284,7 +2285,7 @@ export default function Home() {
                     </div>
                     <div>
                       <p className="luxury-heading font-bold text-lg text-primary mb-1">Phone</p>
-                      <p className="luxury-text text-muted-foreground text-lg">+91-9791035346</p>
+                      <p className="luxury-text text-muted-foreground text-lg">+91-9677943053</p>
                     </div>
                   </div>
 
@@ -2294,7 +2295,7 @@ export default function Home() {
                     </div>
                     <div>
                       <p className="luxury-heading font-bold text-lg text-primary mb-1">Email</p>
-                      <p className="luxury-text text-muted-foreground text-lg">karthikeyan@mhomes.co.in</p>
+                      <p className="luxury-text text-muted-foreground text-lg">contact-us@mhomes.co.in</p>
                     </div>
                   </div>
                 </div>
@@ -2334,7 +2335,6 @@ export default function Home() {
                 height={160}
                 className="h-40 w-auto -mb-6 object-contain"
               />
-              <h2 className="luxury-heading text-2xl font-bold text-white mb-3 pl-8">MHOMES Resort</h2>
               <p className="luxury-text text-white/80 text-sm leading-relaxed mb-6 pl-8">
                 Experience luxury redefined in the heart of Madurai. Premium accommodations designed for unforgettable memories.
               </p>
@@ -2363,6 +2363,7 @@ export default function Home() {
                 {[
                   { name: 'Book Now', href: '/reservation' },
                   { name: 'Contact Us', href: '/#contact' },
+                  { name: 'Terms & Conditions', href: '/terms-conditions' },
                   { name: 'Room Types', href: '/#accommodations' },
                 ].map((link) => (
                   <Link key={link.name} href={link.href} className="luxury-text text-white/80 hover:text-accent text-sm font-medium transition-colors duration-300 block">
@@ -2377,20 +2378,20 @@ export default function Home() {
               <div className="space-y-6">
                 <div>
                   <p className="luxury-text text-white/70 text-xs uppercase tracking-wide mb-2">Address</p>
-                  <p className="luxury-heading text-white text-sm font-medium">Madurai, Tamil Nadu</p>
+                  <p className="luxury-heading text-white text-sm font-medium">62/7, Poigaikaraipatti, Alagarkoil Road, Madurai-625301</p>
                 </div>
 
                 <div>
                   <p className="luxury-text text-white/70 text-xs uppercase tracking-wide mb-2">Phone</p>
-                  <a href="tel:+919791035346" className="luxury-heading text-accent hover:text-accent/80 text-sm font-medium transition-colors">
-                    +91 9791 035346
+                  <a href="tel:+919677943053" className="luxury-heading text-accent hover:text-accent/80 text-sm font-medium transition-colors">
+                    +91 9677 943053
                   </a>
                 </div>
 
                 <div>
                   <p className="luxury-text text-white/70 text-xs uppercase tracking-wide mb-2">Email</p>
-                  <a href="mailto:karthikeyan@mhomes.co.in" className="luxury-heading text-accent hover:text-accent/80 text-sm font-medium transition-colors break-all">
-                    karthikeyan@mhomes.co.in
+                  <a href="mailto:contact-us@mhomes.co.in" className="luxury-heading text-accent hover:text-accent/80 text-sm font-medium transition-colors break-all">
+                    contact-us@mhomes.co.in
                   </a>
                 </div>
               </div>
@@ -2402,18 +2403,14 @@ export default function Home() {
           <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} transition={{ duration: 0.5, delay: 0.4 }} className="py-8">
             <div className="flex flex-col md:flex-row items-center justify-center gap-6">
               <div className="flex gap-6 flex-wrap justify-center">
-                <a href="#" className="luxury-text text-white/70 hover:text-accent text-xs font-medium transition-colors">Terms & Conditions</a>
+                <Link href="/terms-conditions" className="luxury-text text-white/70 hover:text-accent text-xs font-medium transition-colors">Terms & Conditions</Link>
                 <span className="text-white/20">•</span>
-                <a href="#" className="luxury-text text-white/70 hover:text-accent text-xs font-medium transition-colors">Cookie Policy</a>
-                <span className="text-white/20">•</span>
-                <a href="#" className="luxury-text text-white/70 hover:text-accent text-xs font-medium transition-colors">Sitemap</a>
+                <Link href="/sitemap" className="luxury-text text-white/70 hover:text-accent text-xs font-medium transition-colors">Sitemap</Link>
               </div>
             </div>
           </motion.div>
         </div>
       </footer>
-
-      <ChatWidget isChatOpen={isChatOpen} setIsChatOpen={setIsChatOpen} />
     </div>
   )
 }

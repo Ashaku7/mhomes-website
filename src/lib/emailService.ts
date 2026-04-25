@@ -140,11 +140,11 @@ export const sendBookingConfirmation = async (
 
               <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #E8E4DC;">
                 <div style="display: flex; justify-content: space-between; margin: 8px 0;">
-                  <span style="color: #6B6B6B;">Check-in:</span>
+                  <span style="color: #6B6B6B;">Check-in: </span>
                   <span style="color: #1A1A1A; font-weight: 600;">${checkInFormatted}</span>
                 </div>
                 <div style="display: flex; justify-content: space-between; margin: 8px 0;">
-                  <span style="color: #6B6B6B;">Check-out:</span>
+                  <span style="color: #6B6B6B;">Check-out: </span>
                   <span style="color: #1A1A1A; font-weight: 600;">${checkOutFormatted}</span>
                 </div>
               </div>
@@ -152,7 +152,7 @@ export const sendBookingConfirmation = async (
 
             <!-- Next Steps -->
             <p style="color: #1A1A1A; margin: 25px 0;">
-              Our team will call you to collect payment and confirm your reservation. Please keep this email for your reference.
+            Please keep this email for your reference.
             </p>
 
             <!-- Footer -->
@@ -173,7 +173,7 @@ export const sendBookingConfirmation = async (
     await resend.emails.send({
       from: FROM_EMAIL,
       to: guestEmail,
-      subject: `Reservation Received - MHOMES Resort [${bookingReference}]`,
+      subject: `Reservation Received - MHOMES Resort `,
       html: htmlContent,
       replyTo: HOTEL_EMAIL,
     });

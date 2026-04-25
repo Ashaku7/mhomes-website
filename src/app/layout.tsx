@@ -3,8 +3,6 @@ import { ThemeProvider } from "next-themes";
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { Toaster } from "sonner";
-import { AuthProvider } from "@/context/AuthContext";
-import { ClerkProvider } from "@clerk/nextjs";
 import { Cormorant_Garamond, DM_Sans, Montserrat } from "next/font/google";
 
 const cormorantGaramond = Cormorant_Garamond({
@@ -45,26 +43,24 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <ClerkProvider>
-      <html
-        lang="en"
-        suppressHydrationWarning
-        className={`${cormorantGaramond.variable} ${dmSans.variable} ${montserrat.variable}`}
+    <html
+      lang="en"
+      suppressHydrationWarning
+      className={`${cormorantGaramond.variable} ${dmSans.variable} ${montserrat.variable}`}
+    >
+      <body
+        className={`min-h-screen bg-background antialiased ${dmSans.className}`}
       >
-        <body
-          className={`min-h-screen bg-background antialiased ${dmSans.className}`}
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="light"
+          enableSystem
+          disableTransitionOnChange
         >
-          <ThemeProvider
-            attribute="class"
-            defaultTheme="light"
-            enableSystem
-            disableTransitionOnChange
-          >
-            <AuthProvider>{children}</AuthProvider>
-            <Toaster />
-          </ThemeProvider>
-        </body>
-      </html>
-    </ClerkProvider>
+          {children}
+          <Toaster />
+        </ThemeProvider>
+      </body>
+    </html>
   );
 }
