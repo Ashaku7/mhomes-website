@@ -95,12 +95,10 @@ export async function POST(request: NextRequest) {
     });
 
     // Send confirmation email (do not break booking if email fails)
-    if (
-      result &&
-      result.bookingReference &&
-      result.guest &&
-      result.guest.email
-    ) {
+    console.log('[BOOKING] Result:', JSON.stringify(result, null, 2))
+
+    if (result && result.bookingReference && result.guest && result.guest.email) {
+      console.log('[BOOKING] Sending email to:', result.guest.email)
       const roomType =
         result.rooms && result.rooms[0] ? result.rooms[0].roomType : "premium";
       const roomCount = result.rooms ? result.rooms.length : roomIds.length;
