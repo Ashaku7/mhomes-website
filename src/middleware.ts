@@ -1,14 +1,22 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-export default function middleware(req: NextRequest) {
-  // Add CORS headers to all responses
-  const response = NextResponse.next();
+const allowedOrigins = [
+  'https://mhomes.co.in',
+  'https://www.mhomes.co.in',
+  'https://mhomes-website.vercel.app',
+  'https://mhomes-website-git-main-ashaku7s-projects.vercel.app',
+]
 
-  response.headers.set(
-    "Access-Control-Allow-Origin",
-    req.headers.get("origin") || "*",
-  );
+export default function middleware(req: NextRequest) {
+  const response = NextResponse.next();
+  const origin = req.headers.get('origin') || ''
+
+  // Only allow requests from whitelisted origins
+  if (allowedOrigins.includes(origin)) {
+    response.headers.set('Access-Control-Allow-Origin', origin)
+  }
+
   response.headers.set(
     "Access-Control-Allow-Methods",
     "GET, POST, PATCH, DELETE, OPTIONS",
