@@ -2,7 +2,7 @@ import { Resend } from "resend";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 const HOTEL_EMAIL = process.env.HOTEL_EMAIL;
-const FROM_EMAIL = "onboarding@resend.dev";
+const FROM_EMAIL = "contact-us@mhomes.co.in";
 
 /**
  * Format date to readable format (e.g., "April 5, 2026")
