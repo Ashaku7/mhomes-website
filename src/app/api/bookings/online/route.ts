@@ -104,18 +104,16 @@ export async function POST(request: NextRequest) {
       const roomCount = result.rooms ? result.rooms.length : roomIds.length;
       const totalAmount = result.totalAmount || 0;
 
-      sendBookingConfirmation(
-        result.guest.fullName,
-        result.guest.email,
-        result.bookingReference,
-        result.checkIn,
-        result.checkOut,
-        roomType,
-        roomCount,
-        totalAmount,
-      ).catch((err) => {
-        console.error("[BOOKING] Email failed but booking succeeded:", err);
-      });
+      await sendBookingConfirmation(
+      result.guest.fullName,
+      result.guest.email,
+      result.bookingReference,
+      result.checkIn,
+      result.checkOut,
+      roomType,
+      roomCount,
+      totalAmount,
+    );
     }
 
     return NextResponse.json(
