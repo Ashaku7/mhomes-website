@@ -28,7 +28,7 @@ const montserrat = Montserrat({
 });
 
 export const metadata: Metadata = {
-  title: "MHOMES - Luxury Resort & Spa",
+  title: "MHOMES - Luxury Resorts " ,
   description:
     "Experience the ultimate luxury at MHOMES Resort. Premium accommodations, world-class dining, and unforgettable experiences await.",
   keywords: "luxury resort, spa, premium hotel, ocean view, tropical paradise",
