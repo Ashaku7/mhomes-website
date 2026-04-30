@@ -78,7 +78,8 @@ export default function TermsAndConditionsPage() {
                   width={160}
                   height={160}
                   priority
-                  style={{ width: "auto" }}
+                  loading="eager"
+                  style={{ width: "auto", height: "auto" }}
                   className="object-contain"
                 />
               </div>

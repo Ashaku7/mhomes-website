@@ -91,7 +91,8 @@ export default function ReviewsPage() {
                   width={160}
                   height={160}
                   priority
-                  style={{ width: "auto" }}
+                  loading="eager"
+                  style={{ width: "auto", height: "auto" }}
                   className="object-contain drop-shadow-lg"
                 />
               </div>
@@ -395,6 +396,7 @@ export default function ReviewsPage() {
                 alt="MHOMES Resort"
                 width={160}
                 height={160}
+                style={{ width: "auto", height: "auto" }}
                 className="h-40 w-auto -mb-6 object-contain"
               />
               <h2 className="luxury-heading text-2xl font-bold text-white mb-3 pl-8">

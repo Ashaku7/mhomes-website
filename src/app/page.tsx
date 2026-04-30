@@ -30,7 +30,11 @@ import {
   Loader2,
   Activity,
   Building,
-  Smartphone
+  Smartphone,
+  Home as HomeIcon,
+  BookOpen,
+  ImageIcon,
+  MessageSquare
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -770,13 +774,13 @@ export default function Home() {
   }
 
   const navigationItems = [
-    { name: 'Home', href: '#home', icon: '🏠' },
-    { name: 'Story', href: '#story', icon: '📖' },
-    { name: 'Accommodations', href: '#accommodations', icon: '🏨' },
-    { name: 'Gallery', href: '#gallery', icon: '📸' },
-    { name: 'Reviews', href: '#reviews', icon: '⭐' },
-    { name: 'Booking', href: '#booking', icon: '📅' },
-    { name: 'Contact', href: '#contact', icon: '📞' }
+    { name: 'Home', href: '#home', icon: HomeIcon },
+    { name: 'Story', href: '#story', icon: BookOpen },
+    { name: 'Accommodations', href: '#accommodations', icon: Building },
+    { name: 'Gallery', href: '#gallery', icon: ImageIcon },
+    { name: 'Reviews', href: '#reviews', icon: Star },
+    { name: 'Booking', href: '#booking', icon: CalendarDays },
+    { name: 'Contact', href: '#contact', icon: MessageSquare }
   ]
 
   const accommodationTypes = [
@@ -1133,7 +1137,6 @@ export default function Home() {
                     onClick={() => handleNavigationClick(item.href)}
                     className="block luxury-text hover:text-primary transition-colors font-semibold py-2 px-3 rounded-lg hover:bg-primary/5"
                   >
-                    <span className="mr-2 text-lg">{item.icon}</span>
                     {item.name}
                   </Link>
                 </motion.div>
@@ -1142,7 +1145,7 @@ export default function Home() {
               <div className="border-t border-primary/10 pt-3">
                 <Link href="#booking" onClick={() => setIsMenuOpen(false)} className="w-full">
                   <Button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold rounded-lg transition-colors duration-200">
-                    📅 Reserve now
+                    Reserve now
                   </Button>
                 </Link>
               </div>
@@ -1861,7 +1864,7 @@ export default function Home() {
             </p>
           </motion.div>
 
-          <div className="relative flex flex-col items-center justify-center min-h-[650px]">
+          <div className="relative flex flex-col items-center justify-center min-h-[600px] md:min-h-[650px]">
             <motion.div
               className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[90vw] h-[480px] md:w-[80vw] md:h-[600px] rounded-3xl overflow-hidden z-0"
               layoutId="gallery-bg"
@@ -1883,13 +1886,13 @@ export default function Home() {
                 onClick={goLeft}
                 whileHover={{ scale: 1.1, x: -10 }}
                 whileTap={{ scale: 0.9 }}
-                className="flex flex-col items-center justify-center w-16 h-96 group bg-transparent border-none focus:outline-none"
+                className="flex flex-col items-center justify-center w-8 md:w-16 h-64 md:h-96 group bg-transparent border-none focus:outline-none"
               >
                 <motion.span
-                  className="w-12 h-12 flex items-center justify-center rounded-full border-2 border-primary/40 bg-white/40 group-hover:bg-accent/80 transition-colors shadow-lg hover:shadow-xl"
+                  className="w-8 md:w-12 h-8 md:h-12 flex items-center justify-center rounded-full border-2 border-primary/40 bg-white/40 group-hover:bg-accent/80 transition-colors shadow-lg hover:shadow-xl"
                   whileHover={{ scale: 1.15 }}
                 >
-                  <svg width="32" height="32" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" className="text-primary group-hover:text-white transition-colors"><path d="M15 19l-7-7 7-7" /></svg>
+                  <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24" className="text-primary group-hover:text-white transition-colors"><line x1="15" y1="6" x2="9" y2="12" /><line x1="9" y1="12" x2="15" y2="18" /></svg>
                 </motion.span>
               </motion.button>
 
@@ -1911,12 +1914,12 @@ export default function Home() {
                   </motion.div>
 
                   <motion.div
-                    className="relative z-10 w-full bg-gradient-to-br from-white/98 to-white/95 backdrop-blur-sm rounded-3xl p-8 flex flex-col items-center justify-center shadow-2xl min-h-[160px] border border-accent/20"
+                    className="relative z-10 w-full bg-gradient-to-br from-white/98 to-white/95 backdrop-blur-sm rounded-2xl sm:rounded-3xl px-4 sm:px-6 md:px-8 py-3 sm:py-5 md:py-8 flex flex-col items-center justify-center shadow-2xl min-h-fit md:min-h-[160px] border border-accent/20"
                     layoutId="gallery-text"
                     whileHover={{ boxShadow: '0 20px 60px rgba(var(--accent), 0.3)' }}
                   >
                     <motion.h3
-                      className="luxury-heading text-3xl md:text-4xl mb-3 text-center bg-clip-text text-transparent bg-gradient-to-r from-primary to-accent"
+                      className="luxury-heading text-xl sm:text-2xl md:text-3xl lg:text-4xl mb-2 sm:mb-3 text-center bg-clip-text text-transparent bg-gradient-to-r from-primary to-accent"
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
                       transition={{ delay: 0.2 }}
@@ -1924,7 +1927,7 @@ export default function Home() {
                       {slide.title}
                     </motion.h3>
                     <motion.p
-                      className="luxury-text text-base md:text-lg text-muted-foreground text-center mb-5"
+                      className="luxury-text text-sm sm:text-base md:text-lg text-muted-foreground text-center mb-0 sm:mb-5"
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
                       transition={{ delay: 0.3 }}
@@ -1940,13 +1943,13 @@ export default function Home() {
                 onClick={goRight}
                 whileHover={{ scale: 1.1, x: 10 }}
                 whileTap={{ scale: 0.9 }}
-                className="flex flex-col items-center justify-center w-16 h-96 group bg-transparent border-none focus:outline-none"
+                className="flex flex-col items-center justify-center w-8 md:w-16 h-64 md:h-96 group bg-transparent border-none focus:outline-none"
               >
                 <motion.span
-                  className="w-12 h-12 flex items-center justify-center rounded-full border-2 border-primary/40 bg-white/40 group-hover:bg-accent/80 transition-colors shadow-lg hover:shadow-xl"
+                  className="w-8 md:w-12 h-8 md:h-12 flex items-center justify-center rounded-full border-2 border-primary/40 bg-white/40 group-hover:bg-accent/80 transition-colors shadow-lg hover:shadow-xl"
                   whileHover={{ scale: 1.15 }}
                 >
-                  <svg width="32" height="32" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" className="text-primary group-hover:text-white transition-colors"><path d="M9 5l7 7-7 7" /></svg>
+                  <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24" className="text-primary group-hover:text-white transition-colors"><line x1="9" y1="6" x2="15" y2="12" /><line x1="15" y1="12" x2="9" y2="18" /></svg>
                 </motion.span>
               </motion.button>
             </div>

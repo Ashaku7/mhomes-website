@@ -783,6 +783,7 @@ function ReservationPageContent() {
               alt="MHOMES"
               width={160}
               height={160}
+              style={{ width: "auto", height: "auto" }}
               className="block h-22 w-auto"
             />
           </Link>
