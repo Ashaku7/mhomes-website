@@ -425,7 +425,7 @@ function ReservationDatePicker({
         numberOfMonths={1}
         selected={range}
         onSelect={handleSelect}
-        disabled={[{ before: today }]}
+        disabled={(date) => date < today}
         className="rdp-card"
       />
     </div>
