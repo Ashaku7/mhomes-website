@@ -524,7 +524,7 @@ function ContactFormComponent() {
         <motion.div whileHover={{ y: -3 }}>
           <label className="luxury-text text-sm font-semibold mb-3 block text-primary">First Name</label>
           <Input
-            placeholder="Fistname"
+            placeholder="Firstname"
             name="firstName"
             value={formData.firstName}
             onChange={handleInputChange}
