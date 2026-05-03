@@ -49,7 +49,7 @@ const BORDER_LIGHT = "#E8E4DC";
 
 const ROOM_AMENITIES = {
   premium: [
-    { icon: Eye, label: "32-Inch Smart TV" },
+    { icon: Eye, label: "42-Inch Smart TV" },
     { icon: UtensilsCrossed, label: "In-Room Refreshment Kit" },
     { icon: Wind, label: "Air Conditioning" },
     { icon: Sofa, label: "Work Desk" },
@@ -59,7 +59,7 @@ const ROOM_AMENITIES = {
     { icon: Check, label: "Daily Housekeeping" },
   ],
   premium_plus: [
-    { icon: Eye, label: "32-Inch Smart TV" },
+    { icon: Eye, label: "42-Inch Smart TV" },
     { icon: UtensilsCrossed, label: "In-Room Refreshment Kit" },
     { icon: Wind, label: "Air Conditioning" },
     { icon: Sofa, label: "Work Desk" },
@@ -80,13 +80,13 @@ const ROOM_INFO: Record<
     sqft: 320,
     beds: "1 King Bed",
     image: "/premium.jpg",
-    price: 6000,
+    price: 5500,
   },
   premium_plus: {
     sqft: 480,
     beds: "2 King Beds",
     image: "/premium-plus.jpg",
-    price: 6500,
+    price: 6000,
   },
 };
 
@@ -174,6 +174,28 @@ const validateEmail = (email: string): string | null => {
   if (!email) return "Email is required";
   const reg = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   return !reg.test(email) ? "Please enter a valid email address" : null;
+};
+
+// Helper function to get today and tomorrow in local timezone (YYYY-MM-DD format)
+const getTodayAndTomorrow = () => {
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  
+  // Format using local date (not UTC) to avoid timezone shifts
+  const year = today.getFullYear()
+  const month = String(today.getMonth() + 1).padStart(2, '0')
+  const day = String(today.getDate()).padStart(2, '0')
+  const todayStr = `${year}-${month}-${day}`
+  
+  const tomorrow = new Date(today)
+  tomorrow.setDate(tomorrow.getDate() + 1)
+  
+  const tomorrowYear = tomorrow.getFullYear()
+  const tomorrowMonth = String(tomorrow.getMonth() + 1).padStart(2, '0')
+  const tomorrowDay = String(tomorrow.getDate()).padStart(2, '0')
+  const tomorrowStr = `${tomorrowYear}-${tomorrowMonth}-${tomorrowDay}`
+  
+  return { today: todayStr, tomorrow: tomorrowStr }
 };
 
 const COUNTRY_OPTIONS: { code: string; label: string }[] = [
@@ -638,8 +660,9 @@ function ReservationPageContent() {
   const recaptchaRef = useRef<ReCAPTCHA>(null);
 
   // Step 1
-  const [checkIn, setCheckIn] = useState(searchParams.get("checkIn") || "");
-  const [checkOut, setCheckOut] = useState(searchParams.get("checkOut") || "");
+  const { today: defaultToday, tomorrow: defaultTomorrow } = getTodayAndTomorrow();
+  const [checkIn, setCheckIn] = useState(searchParams.get("checkIn") || defaultToday);
+  const [checkOut, setCheckOut] = useState(searchParams.get("checkOut") || defaultTomorrow);
   const [roomType, setRoomType] = useState<"premium" | "premium_plus">(
     (searchParams.get("roomType") as "premium" | "premium_plus") || "premium",
   );
@@ -663,13 +686,6 @@ function ReservationPageContent() {
   const [bookingResult, setBookingResult] = useState<BookingResult | null>(
     null,
   );
-
-  useEffect(() => {
-    if (checkIn && checkOut) {
-      handleSearch();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   const handleSearch = async () => {
     if (!checkIn || !checkOut) {

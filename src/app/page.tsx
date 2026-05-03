@@ -3,6 +3,28 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
+
+// Helper function to get today and tomorrow in local timezone (YYYY-MM-DD format)
+const getTodayAndTomorrow = () => {
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  
+  // Format using local date (not UTC) to avoid timezone shifts
+  const year = today.getFullYear()
+  const month = String(today.getMonth() + 1).padStart(2, '0')
+  const day = String(today.getDate()).padStart(2, '0')
+  const todayStr = `${year}-${month}-${day}`
+  
+  const tomorrow = new Date(today)
+  tomorrow.setDate(tomorrow.getDate() + 1)
+  
+  const tomorrowYear = tomorrow.getFullYear()
+  const tomorrowMonth = String(tomorrow.getMonth() + 1).padStart(2, '0')
+  const tomorrowDay = String(tomorrow.getDate()).padStart(2, '0')
+  const tomorrowStr = `${tomorrowYear}-${tomorrowMonth}-${tomorrowDay}`
+  
+  return { today: todayStr, tomorrow: tomorrowStr }
+}
 import type { KeyboardEvent } from 'react'
 import { motion, useScroll, useTransform, useMotionTemplate, useMotionValue } from 'framer-motion'
 import Image from 'next/image'
@@ -502,7 +524,7 @@ function ContactFormComponent() {
         <motion.div whileHover={{ y: -3 }}>
           <label className="luxury-text text-sm font-semibold mb-3 block text-primary">First Name</label>
           <Input
-            placeholder="John"
+            placeholder="Fistname"
             name="firstName"
             value={formData.firstName}
             onChange={handleInputChange}
@@ -514,7 +536,7 @@ function ContactFormComponent() {
         <motion.div whileHover={{ y: -3 }}>
           <label className="luxury-text text-sm font-semibold mb-3 block text-primary">Last Name</label>
           <Input
-            placeholder="Doe"
+            placeholder="Lastname"
             name="lastName"
             value={formData.lastName}
             onChange={handleInputChange}
@@ -528,7 +550,7 @@ function ContactFormComponent() {
         <label className="luxury-text text-sm font-semibold mb-3 block text-primary">Email</label>
         <Input
           type="email"
-          placeholder="john@example.com"
+          placeholder="Mail"
           name="email"
           value={formData.email}
           onChange={handleInputChange}
@@ -623,8 +645,9 @@ export default function Home() {
   const [reviewsLoading, setReviewsLoading] = useState(true)
 
   // Hero booking form state
-  const [checkIn, setCheckIn] = useState<string | null>(null)
-  const [checkOut, setCheckOut] = useState<string | null>(null)
+  const { today: defaultToday, tomorrow: defaultTomorrow } = getTodayAndTomorrow()
+  const [checkIn, setCheckIn] = useState<string | null>(defaultToday)
+  const [checkOut, setCheckOut] = useState<string | null>(defaultTomorrow)
   const [roomType, setRoomType] = useState<'premium' | 'premium_plus'>('premium')
   const [roomCount, setRoomCount] = useState<number>(1)
   const [galleryIndex, setGalleryIndex] = useState(1)
@@ -789,28 +812,28 @@ export default function Home() {
       description: 'Sophisticated rooms with modern amenities and garden or pool views',
       image: "/premium.jpg",
       images: ["/premium.jpg", "/bathroom.jpg", "/outside.jpg"],
-      price: '₹6000/Night',
+      price: '₹5500/Night',
       bedType: 'King Bed',
-      sqft: '45 sqm',
+      sqft: '30 sqm',
       maxGuests: '2',
-      features: ['Pool View', 'King Bed', '45 sqm', 'Work Desk']
+      features: ['Pool View', 'King Bed', '30 sqm', 'Work Desk']
     },
     {
       name: 'Premium Plus Room',
       description: 'Comfortable studios perfect for couples seeking luxury and convenience',
       image: "/deluxe.jpg",
       images: ["/premium-plus.jpg", "/bathroom.jpg", "/outside.jpg"],
-      price: '₹6500/Night',
+      price: '₹6000/Night',
       bedType: 'King Bed',
-      sqft: '35 sqm',
+      sqft: '30 sqm',
       maxGuests: '2',
-      features: ['Garden View', 'King Bed', '35 sqm', 'Work Desk']
+      features: ['Garden View', 'King Bed', '30 sqm', 'Work Desk']
     }
   ]
 
   const roomAmenities = {
-    'Premium Room': ['32-Inch Smart TV', 'In-Room Refreshment Kit', 'Air Conditioning', 'Work Desk', 'High-Speed WiFi', 'Premium Toiletries','Rainfall Shower', 'Daily Housekeeping'],
-    'Premium Plus Room': ['32-Inch Smart TV','In-Room Refreshment Kit','Air Conditioning','Work Desk','High-Speed WiFi', 'Premium Toiletries','Rainfall Shower','Daily Housekeeping','Premium Bedding','BathTub']
+    'Premium Room': ['42-Inch Smart TV', 'In-Room Refreshment Kit', 'Air Conditioning', 'Work Desk', 'High-Speed WiFi', 'Premium Toiletries','Rainfall Shower', 'Daily Housekeeping'],
+    'Premium Plus Room': ['42-Inch Smart TV','In-Room Refreshment Kit','Air Conditioning','Work Desk','High-Speed WiFi', 'Premium Toiletries','Rainfall Shower','Daily Housekeeping','Premium Bedding','BathTub']
   }
 
   const testimonials = [
@@ -1711,7 +1734,7 @@ export default function Home() {
                         whileHover={{ scale: 1.02 }}
                         whileTap={{ scale: 0.98 }}
                       >
-                        <Link href="/reservation" className="w-full">
+                        <Link href={`/reservation?roomType=${room.name === 'Premium Room' ? 'premium' : 'premium_plus'}`} className="w-full">
                           <Button size="lg" className="w-full bg-primary hover:bg-primary/90 text-primary-foreground hover:shadow-xl px-12 py-4 text-lg rounded-lg font-semibold transition-all duration-200">
                             Reserve now
                             <ArrowRight className="ml-2 w-5 h-5" />
@@ -1815,12 +1838,14 @@ export default function Home() {
                 </Button>
               </motion.div>
               <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                <Button
-                  className="bg-primary hover:bg-primary/90 text-primary-foreground px-8 py-3 text-lg font-semibold rounded-lg hover:shadow-xl transition-all"
-                >
-                  Book This Room
-                  <ArrowRight className="ml-2 w-5 h-5" />
-                </Button>
+                <Link href={`/reservation?roomType=${selectedAmenitiesRoom === 'Premium Room' ? 'premium' : 'premium_plus'}`}>
+                  <Button
+                    className="bg-primary hover:bg-primary/90 text-primary-foreground px-8 py-3 text-lg font-semibold rounded-lg hover:shadow-xl transition-all"
+                  >
+                    Book This Room
+                    <ArrowRight className="ml-2 w-5 h-5" />
+                  </Button>
+                </Link>
               </motion.div>
             </motion.div>
           </motion.div>

@@ -68,7 +68,7 @@ export async function GET(request: NextRequest) {
             id: "deluxe-studio",
             name: "Premium Plus Room",
             price: 320,
-            features: ["Garden View", "Double Bed", "35 sqm", "Work Desk"],
+            features: ["Garden View", "Double Bed", "30 sqm", "Work Desk"],
             available: true,
           },
         ],
