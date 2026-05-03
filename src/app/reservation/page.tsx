@@ -318,6 +318,8 @@ function ReservationDatePicker({
   const [open, setOpen] = useState(false);
   const [popoverPos, setPopoverPos] = useState({ top: 0, left: 0 });
   const [mounted, setMounted] = useState(false);
+  const [selectingField, setSelectingField] = useState<'checkIn' | 'checkOut' | null>(null);
+  const [triggerElement, setTriggerElement] = useState<HTMLElement | null>(null);
   const triggerRef = useRef<HTMLDivElement>(null);
   const portalRef = useRef<HTMLDivElement>(null);
 
@@ -333,15 +335,20 @@ function ReservationDatePicker({
         }
       : undefined;
 
-  const handleSelect = (r: DateRange | undefined) => {
-    onChangeCheckIn(r?.from ? toISO(r.from) : "");
-    onChangeCheckOut(r?.to ? toISO(r.to) : "");
-    if (r?.from && r?.to) setOpen(false);
+  const handleSelect = (selected: Date | DateRange | undefined) => {
+    if (selectingField === 'checkIn' && selected instanceof Date) {
+      onChangeCheckIn(toISO(selected));
+      setOpen(false);
+    } else if (selectingField === 'checkOut' && selected instanceof Date) {
+      onChangeCheckOut(toISO(selected));
+      setOpen(false);
+    }
   };
 
-  const updatePopoverPos = () => {
-    if (!triggerRef.current) return;
-    const rect = triggerRef.current.getBoundingClientRect();
+  const updatePopoverPos = (element?: HTMLElement) => {
+    const target = element || triggerRef.current;
+    if (!target) return;
+    const rect = target.getBoundingClientRect();
     const spacing = 6;
     const minEdgeGap = 8;
     const estimatedPopoverWidth = 320;
@@ -363,9 +370,21 @@ function ReservationDatePicker({
     setPopoverPos({ top, left });
   };
 
-  const handleOpen = () => {
-    updatePopoverPos();
+  const handleOpen = (element?: HTMLElement) => {
+    updatePopoverPos(element);
     setOpen((v) => !v);
+  };
+
+  const openForCheckIn = (e: React.MouseEvent<HTMLButtonElement>) => {
+    setSelectingField('checkIn');
+    setTriggerElement(e.currentTarget);
+    handleOpen(e.currentTarget);
+  };
+
+  const openForCheckOut = (e: React.MouseEvent<HTMLButtonElement>) => {
+    setSelectingField('checkOut');
+    setTriggerElement(e.currentTarget);
+    handleOpen(e.currentTarget);
   };
 
   // Close on outside click
@@ -373,18 +392,21 @@ function ReservationDatePicker({
     if (!open) return;
     const handler = (e: MouseEvent) => {
       const t = e.target as Node;
-      if (triggerRef.current?.contains(t) || portalRef.current?.contains(t))
+      if (
+        triggerElement?.contains(t) ||
+        portalRef.current?.contains(t)
+      )
         return;
       setOpen(false);
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
-  }, [open]);
+  }, [open, triggerElement]);
 
   // Keep calendar aligned to trigger while scrolling/resizing
   useEffect(() => {
-    if (!open) return;
-    const onViewportChange = () => updatePopoverPos();
+    if (!open || !triggerElement) return;
+    const onViewportChange = () => updatePopoverPos(triggerElement);
     window.addEventListener("scroll", onViewportChange, {
       passive: true,
       capture: true,
@@ -394,7 +416,7 @@ function ReservationDatePicker({
       window.removeEventListener("scroll", onViewportChange, true);
       window.removeEventListener("resize", onViewportChange);
     };
-  }, [open]);
+  }, [open, triggerElement]);
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -421,9 +443,15 @@ function ReservationDatePicker({
       }}
     >
       <DayPicker
-        mode="range"
+        mode="single"
         numberOfMonths={1}
-        selected={range}
+        selected={
+          selectingField === 'checkIn'
+            ? (checkIn ? new Date(checkIn + 'T00:00') : undefined)
+            : selectingField === 'checkOut'
+            ? (checkOut ? new Date(checkOut + 'T00:00') : undefined)
+            : undefined
+        }
         onSelect={handleSelect}
         disabled={(date) => date < today}
         className="rdp-card"
@@ -436,13 +464,13 @@ function ReservationDatePicker({
       <style>{rdpCardStyles}</style>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {/* Check-in */}
-        <div ref={triggerRef}>
+        <div>
           <Label className="text-gray-700 text-sm flex items-center gap-1.5 mb-2">
             <CalendarDays className="w-3.5 h-3.5" /> Check-in
           </Label>
           <button
             type="button"
-            onClick={handleOpen}
+            onClick={openForCheckIn}
             className="w-full text-left px-3 py-2 rounded-md border text-sm focus:outline-none transition-all"
             style={btnStyle(!!checkIn)}
           >
@@ -457,7 +485,7 @@ function ReservationDatePicker({
           </Label>
           <button
             type="button"
-            onClick={handleOpen}
+            onClick={openForCheckOut}
             className="w-full text-left px-3 py-2 rounded-md border text-sm focus:outline-none transition-all"
             style={btnStyle(!!checkOut)}
           >
