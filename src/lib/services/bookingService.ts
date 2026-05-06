@@ -25,6 +25,8 @@ interface CreateOnlineBookingParams {
   totalGuests: number;
   bookingSource?: string;
   extraExpense?: string | null;
+  couponCode?: string | null;
+  couponDiscount?: number | null;
 }
 
 interface ConfirmPaymentParams {
@@ -342,6 +344,8 @@ export const createOnlineBooking = async (
     totalGuests,
     bookingSource = "online",
     extraExpense = null,
+    couponCode = null,
+    couponDiscount = null,
   } = params;
 
   if (!fullName || !email || !phone) {
@@ -423,12 +427,22 @@ export const createOnlineBooking = async (
       );
     }
 
-    const totalAmount = lockedRooms.reduce((sum: number, room: any) => {
+    // Calculate original subtotal (before discount and GST)
+    const originalSubtotal = lockedRooms.reduce((sum: number, room: any) => {
       return sum + parseFloat(room.price_per_night) * nights;
     }, 0);
 
-    // Add 5% GST to total amount
-    const totalWithGst = totalAmount * 1.05;
+    // Calculate discount amount if coupon provided
+    const discountAmount = couponDiscount || 0;
+    const discountedSubtotal = originalSubtotal - discountAmount;
+
+    // GST is always 5% on original subtotal (before discount)
+    const gstAmount = parseFloat((originalSubtotal * 0.05).toFixed(2));
+
+    // Total = discounted subtotal + GST
+    const totalWithGst = parseFloat(
+      (discountedSubtotal + gstAmount).toFixed(2)
+    );
 
     const guest = await tx.guest.create({
       data: {
@@ -458,8 +472,10 @@ export const createOnlineBooking = async (
         totalGuests: parseInt(String(totalGuests)),
         bookingStatus: "pending",
         bookingSource,
-        totalAmount: parseFloat(totalWithGst.toFixed(2)),
+        totalAmount: totalWithGst,
         extraExpense: extraExpense || null,
+        couponCode: couponCode || null,
+        couponDiscount: discountAmount,
       },
     });
 
@@ -473,11 +489,21 @@ export const createOnlineBooking = async (
     const payment = await tx.payment.create({
       data: {
         bookingId: newBooking.id,
-        amount: parseFloat(totalWithGst.toFixed(2)),
+        amount: totalWithGst,
         paymentStatus: "yet_to_pay",
         paymentMethod: "gateway",
       },
     });
+
+    // Update coupon status to "used" if coupon code is provided
+    if (couponCode) {
+      await tx.coupon.update({
+        where: { code: couponCode },
+        data: {
+          status: "used",
+        },
+      });
+    }
 
     return {
       bookingId: newBooking.id,
@@ -497,7 +523,10 @@ export const createOnlineBooking = async (
         roomType: r.room_type,
         pricePerNight: parseFloat(r.price_per_night),
       })),
-      totalAmount: parseFloat(totalWithGst.toFixed(2)),
+      originalAmount: parseFloat(originalSubtotal.toFixed(2)),
+      couponDiscount: discountAmount,
+      gstAmount: gstAmount,
+      totalAmount: totalWithGst,
       paymentStatus: "yet_to_pay",
       bookingStatus: "pending",
     };

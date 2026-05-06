@@ -710,10 +710,80 @@ function ReservationPageContent() {
     [key: string]: string;
   }>({});
 
+  // Coupon state
+  const [couponCode, setCouponCode] = useState("");
+  const [couponDiscount, setCouponDiscount] = useState(0);
+  const [couponMessage, setCouponMessage] = useState("");
+  const [couponMessageType, setCouponMessageType] = useState<"success" | "error">("success");
+  const [couponValidating, setCouponValidating] = useState(false);
+  const [appliedCouponCode, setAppliedCouponCode] = useState<string | null>(null);
+  const [discountPercentage, setDiscountPercentage] = useState(0);
+
   // Step 4
   const [bookingResult, setBookingResult] = useState<BookingResult | null>(
     null,
   );
+
+  // Coupon validation handler
+  const handleValidateCoupon = async () => {
+    if (!couponCode.trim()) {
+      setCouponMessage("Please enter a coupon code");
+      setCouponMessageType("error");
+      return;
+    }
+
+    if (!searchResult?.totalAmount) {
+      setCouponMessage("Please complete your search first");
+      setCouponMessageType("error");
+      return;
+    }
+
+    setCouponValidating(true);
+    setCouponMessage("");
+    try {
+      const res = await fetch("/api/coupons/validate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          code: couponCode.trim(),
+          subtotal: searchResult.totalAmount,
+        }),
+      });
+      const data = await res.json();
+
+      if (data.valid) {
+        setCouponDiscount(data.discountAmount);
+        setDiscountPercentage(data.discountPercentage);
+        setAppliedCouponCode(data.code);
+        setCouponMessage(`Coupon applied! You save ₹${data.discountAmount.toLocaleString("en-IN")}`);
+        setCouponMessageType("success");
+        setCouponCode(""); // Clear input after successful application
+      } else {
+        setCouponDiscount(0);
+        setAppliedCouponCode(null);
+        setDiscountPercentage(0);
+        setCouponMessage(data.message || "Invalid coupon code");
+        setCouponMessageType("error");
+      }
+    } catch (err) {
+      setCouponDiscount(0);
+      setAppliedCouponCode(null);
+      setDiscountPercentage(0);
+      setCouponMessage("Failed to validate coupon");
+      setCouponMessageType("error");
+    } finally {
+      setCouponValidating(false);
+    }
+  };
+
+  // Remove coupon handler
+  const handleRemoveCoupon = () => {
+    setCouponCode("");
+    setCouponDiscount(0);
+    setAppliedCouponCode(null);
+    setDiscountPercentage(0);
+    setCouponMessage("");
+  };
 
   const handleSearch = async () => {
     if (!checkIn || !checkOut) {
@@ -786,6 +856,8 @@ function ReservationPageContent() {
         totalGuests: searchResult.assignedRooms.length,
         bookingSource: "online" as const,
         notes: "",
+        couponCode: appliedCouponCode || null,
+        couponDiscount: couponDiscount || null,
         captchaToken,
       };
       const res = await bookingsApi.createBooking(payload as any);
@@ -1335,6 +1407,81 @@ function ReservationPageContent() {
                                   </p>
                                 )}
                               </div>
+
+                              {/* Coupon Section */}
+                              <div className="pt-4 border-t" style={{ borderColor: BORDER_LIGHT }}>
+                                <Label className="text-gray-700 text-sm mb-3 block font-medium">
+                                  Have a coupon? Apply it here
+                                </Label>
+                                
+                                {appliedCouponCode ? (
+                                  <div className="space-y-2">
+                                    <div className="bg-green-50 border border-green-200 rounded-md p-3 flex items-center justify-between">
+                                      <div className="flex items-center gap-2">
+                                        <Check className="w-4 h-4 text-green-600" />
+                                        <div>
+                                          <p className="text-sm font-medium text-green-900">
+                                            Coupon Applied: {appliedCouponCode}
+                                          </p>
+                                          <p className="text-xs text-green-700">
+                                            You save ₹{couponDiscount.toLocaleString("en-IN")}
+                                          </p>
+                                        </div>
+                                      </div>
+                                      <button
+                                        type="button"
+                                        onClick={handleRemoveCoupon}
+                                        className="text-green-600 hover:text-green-800 text-sm font-medium"
+                                      >
+                                        Remove
+                                      </button>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <div className="flex gap-2">
+                                    <Input
+                                      type="text"
+                                      value={couponCode}
+                                      onChange={(e) => {
+                                        setCouponCode(e.target.value);
+                                        setCouponMessage("");
+                                      }}
+                                      placeholder="Enter coupon code"
+                                      disabled={couponValidating}
+                                      style={{
+                                        backgroundColor: "#f5f5f5",
+                                        borderColor: BORDER_LIGHT,
+                                      }}
+                                      className="text-gray-900 focus:outline-none"
+                                    />
+                                    <Button
+                                      type="button"
+                                      onClick={handleValidateCoupon}
+                                      disabled={couponValidating || !couponCode.trim()}
+                                      style={{
+                                        backgroundColor: couponValidating ? "#ccc" : BUTTON_BROWN,
+                                      }}
+                                      className="text-white font-semibold px-4 py-2"
+                                    >
+                                      {couponValidating ? (
+                                        <Loader2 className="w-4 h-4 animate-spin" />
+                                      ) : (
+                                        "Apply"
+                                      )}
+                                    </Button>
+                                  </div>
+                                )}
+
+                                {couponMessage && (
+                                  <p className={`text-xs mt-2 ${
+                                    couponMessageType === "success"
+                                      ? "text-green-600"
+                                      : "text-red-600"
+                                  }`}>
+                                    {couponMessage}
+                                  </p>
+                                )}
+                              </div>
                             </div>
                           </CardContent>
                         </Card>
@@ -1472,13 +1619,27 @@ function ReservationPageContent() {
                               {formatRs(searchResult.totalAmount || 0)}
                             </span>
                           </div>
+                          {appliedCouponCode && couponDiscount > 0 && (
+                            <div className="flex justify-between text-green-600">
+                              <span>Coupon Discount ({appliedCouponCode} -{discountPercentage}%)</span>
+                              <span className="font-medium">
+                                -₹{couponDiscount.toLocaleString("en-IN")}
+                              </span>
+                            </div>
+                          )}
+                          {appliedCouponCode && couponDiscount > 0 && (
+                            <div className="flex justify-between border-t pt-2" style={{ borderColor: BORDER_LIGHT }}>
+                              <span className="text-gray-600">Discounted Subtotal</span>
+                              <span className="text-gray-900">
+                                {formatRs((searchResult.totalAmount || 0) - couponDiscount)}
+                              </span>
+                            </div>
+                          )}
                           <div className="flex justify-between">
                             <span className="text-gray-600">Tax (5% GST)</span>
                             <span className="text-gray-900">
                               {formatRs(
-                                Math.round(
-                                  (searchResult.totalAmount || 0) * 0.05,
-                                ),
+                                Math.round((searchResult.totalAmount || 0) * 0.05),
                               )}
                             </span>
                           </div>
@@ -1493,7 +1654,7 @@ function ReservationPageContent() {
                             >
                               {formatRs(
                                 Math.round(
-                                  (searchResult.totalAmount || 0) * 1.05,
+                                  ((searchResult.totalAmount || 0) - couponDiscount) + ((searchResult.totalAmount || 0) * 0.05),
                                 ),
                               )}
                             </span>

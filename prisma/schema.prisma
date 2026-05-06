@@ -61,6 +61,11 @@ enum IdProofType {
   voter_id
 }
 
+enum CouponStatus {
+  active
+  used
+}
+
 // ─── TABLE 1: Guests ──────────────────────────────────────
 
 model Guest {
@@ -110,12 +115,15 @@ model Booking {
   bookingSource    BookingSource @map("booking_source")
   totalAmount      Decimal       @map("total_amount") @db.Decimal(10, 2)
   extraExpense     String?       @map("extra_expense")
+  couponCode       String?       @map("coupon_code")
+  couponDiscount   Decimal       @default(0) @map("coupon_discount") @db.Decimal(10, 2)
   createdAt        DateTime      @default(now()) @map("created_at")
 
   guest            Guest         @relation(fields: [guestId], references: [id])
   bookingRooms     BookingRoom[]
   payments         Payment[]
   invoice          Invoice?
+  coupon           Coupon?       @relation("BookingCoupon", fields: [couponCode], references: [code])
 
   @@index([guestId])
   @@index([checkIn, checkOut])
@@ -181,6 +189,23 @@ model Invoice {
 
   @@index([bookingId])
   @@map("invoices")
+}
+
+// ─── TABLE 8: Coupons ────────────────────────────────────
+
+model Coupon {
+  id                  Int          @id @default(autoincrement())
+  code                String       @unique
+  discountPercentage  Float
+  expiryDate          DateTime     @map("expiry_date")
+  status              CouponStatus @default(active)
+  createdAt           DateTime     @default(now()) @map("created_at")
+
+  bookings            Booking[]    @relation("BookingCoupon")
+
+  @@index([code])
+  @@index([status])
+  @@map("coupons")
 }
 
 //authentication

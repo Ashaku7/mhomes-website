@@ -926,7 +926,7 @@ export default function Home() {
     {
       word: 'Meena',
       description: 'The "M" also stands for Meena - the heart of our family, whose love is the foundation of our family. Built on her land and shaped by her love, made this more than a place - a home.',
-      image: '/MHOMES-logo.png'
+      image: '/Meena_photo.jpeg'
     }
   ]
 

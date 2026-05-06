@@ -78,6 +78,11 @@ export const sendBookingConfirmation = async (
   roomType: string,
   roomCount: number,
   totalAmount: number,
+  originalAmount?: number,
+  couponCode?: string,
+  couponDiscount?: number,
+  gstAmount?: number,
+  discountPercentage?: number,
 ): Promise<boolean> => {
   try {
     // Skip email if no guest email
@@ -92,6 +97,11 @@ export const sendBookingConfirmation = async (
     const checkOutFormatted = formatDate(checkOut);
     const roomTypeFormatted =
       roomType === "premium_plus" ? "Premium Plus" : "Premium";
+
+    // Calculate discounted subtotal if coupon is applied
+    const discountedSubtotal = originalAmount && couponDiscount 
+      ? originalAmount - couponDiscount 
+      : originalAmount || totalAmount;
 
     const htmlContent = `
       <html>
@@ -132,10 +142,6 @@ export const sendBookingConfirmation = async (
                   <p style="color: #6B6B6B; margin: 0 0 5px 0; font-size: 12px; text-transform: uppercase;">Number of Rooms</p>
                   <p style="color: #1A1A1A; margin: 0; font-weight: 600;">${roomCount}</p>
                 </div>
-                <div>
-                  <p style="color: #6B6B6B; margin: 0 0 5px 0; font-size: 12px; text-transform: uppercase;">Total Amount</p>
-                  <p style="color: #C9A84C; margin: 0; font-weight: 600;">₹${totalAmount.toLocaleString("en-IN")}</p>
-                </div>
               </div>
 
               <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #E8E4DC;">
@@ -146,6 +152,36 @@ export const sendBookingConfirmation = async (
                 <div style="display: flex; justify-content: space-between; margin: 8px 0;">
                   <span style="color: #6B6B6B;">Check-out: </span>
                   <span style="color: #1A1A1A; font-weight: 600;">${checkOutFormatted}</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Price Breakdown -->
+            <div style="background-color: #FAFAF8; border-left: 4px solid #6B3F2A; padding: 20px; margin: 25px 0; border-radius: 4px;">
+              <h3 style="color: #6B3F2A; margin: 0 0 15px 0; font-size: 16px;">Price Breakdown</h3>
+              
+              <div style="font-size: 14px;">
+                <div style="display: flex; justify-content: space-between; margin: 10px 0;">
+                  <span style="color: #6B6B6B;">Subtotal (Original):</span>
+                  <span style="color: #1A1A1A; font-weight: 600;">₹${(originalAmount || totalAmount).toLocaleString("en-IN")}</span>
+                </div>
+                ${couponCode ? `
+                <div style="display: flex; justify-content: space-between; margin: 10px 0; color: #22c55e;">
+                  <span>Coupon Discount (${couponCode} -${discountPercentage || 0}%):</span>
+                  <span style="font-weight: 600;">-₹${(couponDiscount || 0).toLocaleString("en-IN")}</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; margin: 10px 0; padding-top: 10px; border-top: 1px solid #E8E4DC;">
+                  <span style="color: #6B6B6B;">Subtotal (After Discount):</span>
+                  <span style="color: #1A1A1A; font-weight: 600;">₹${discountedSubtotal.toLocaleString("en-IN")}</span>
+                </div>
+                ` : ''}
+                <div style="display: flex; justify-content: space-between; margin: 10px 0;">
+                  <span style="color: #6B6B6B;">GST (5% on original):</span>
+                  <span style="color: #1A1A1A; font-weight: 600;">₹${(gstAmount || 0).toLocaleString("en-IN")}</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; margin: 15px 0; padding-top: 10px; border-top: 2px solid #C9A84C;">
+                  <span style="color: #C9A84C; font-weight: 700; font-size: 16px;">Total Amount:</span>
+                  <span style="color: #C9A84C; font-weight: 700; font-size: 16px;">₹${totalAmount.toLocaleString("en-IN")}</span>
                 </div>
               </div>
             </div>

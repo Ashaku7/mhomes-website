@@ -4,7 +4,7 @@ import axios from "axios";
 /**
  * POST /api/bookings/online
  * Create online booking with CAPTCHA verification
- * Body: { fullName, email, phone, members, roomIds, checkIn, checkOut, totalGuests, bookingSource, extraExpense, captchaToken }
+ * Body: { fullName, email, phone, members, roomIds, checkIn, checkOut, totalGuests, bookingSource, extraExpense, couponCode, couponDiscount, captchaToken }
  */
 export async function POST(request: NextRequest) {
   try {
@@ -29,6 +29,8 @@ export async function POST(request: NextRequest) {
       totalGuests,
       bookingSource,
       extraExpense,
+      couponCode,
+      couponDiscount,
       captchaToken,
     } = body;
 
@@ -92,6 +94,8 @@ export async function POST(request: NextRequest) {
       totalGuests: parseInt(totalGuests),
       bookingSource: bookingSource || "online",
       extraExpense: extraExpense || null,
+      couponCode: couponCode || null,
+      couponDiscount: couponDiscount ? parseFloat(couponDiscount) : null,
     });
 
     // Send confirmation email (do not break booking if email fails)
@@ -103,17 +107,25 @@ export async function POST(request: NextRequest) {
         result.rooms && result.rooms[0] ? result.rooms[0].roomType : "premium";
       const roomCount = result.rooms ? result.rooms.length : roomIds.length;
       const totalAmount = result.totalAmount || 0;
+      const originalAmount = result.originalAmount || totalAmount;
+      const couponDiscount = result.couponDiscount || 0;
+      const gstAmount = result.gstAmount || 0;
 
       await sendBookingConfirmation(
-      result.guest.fullName,
-      result.guest.email,
-      result.bookingReference,
-      result.checkIn,
-      result.checkOut,
-      roomType,
-      roomCount,
-      totalAmount,
-    );
+        result.guest.fullName,
+        result.guest.email,
+        result.bookingReference,
+        result.checkIn,
+        result.checkOut,
+        roomType,
+        roomCount,
+        totalAmount,
+        originalAmount,
+        couponCode || undefined,
+        couponDiscount,
+        gstAmount,
+        couponDiscount > 0 ? ((couponDiscount / originalAmount) * 100) : undefined,
+      );
     }
 
     return NextResponse.json(
