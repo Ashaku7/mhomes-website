@@ -84,7 +84,7 @@ const ROOM_INFO: Record<
     price: 5500,
   },
   premium_plus: {
-    sqft: 480,
+    sqft: 320,
     beds: "2 King Beds",
     image: "/premium-plus.jpg",
     price: 6000,
