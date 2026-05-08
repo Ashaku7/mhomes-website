@@ -37,6 +37,7 @@ import {
   MapPin,
   Phone,
   Mail,
+  X,
 } from "lucide-react";
 
 // ─── Constants
@@ -145,12 +146,15 @@ const formatRoomSummaryLine = (summary: { type: string; count: number }[]) =>
       return `${label} × ${count} ${roomsWord}`;
     })
     .join(", ");
-const formatDate = (dateStr: string) =>
-  new Date(dateStr + "T00:00").toLocaleDateString("en-US", {
+const formatDate = (dateStr: string) => {
+  // Handle both YYYY-MM-DD and ISO datetime formats
+  const dateOnly = dateStr.split("T")[0]; // Extract YYYY-MM-DD from ISO format
+  return new Date(dateOnly + "T00:00").toLocaleDateString("en-US", {
     month: "long",
     day: "numeric",
     year: "numeric",
   });
+};
 
 const getRoomSummary = (
   rooms: AssignedRoom[] | undefined,
@@ -724,6 +728,11 @@ function ReservationPageContent() {
     null,
   );
 
+  // Payment state
+  const [paymentStatus, setPaymentStatus] = useState<"idle" | "pending" | "success" | "failure">("idle");
+  const [paymentError, setPaymentError] = useState<string | null>(null);
+  const [pendingBookingId, setPendingBookingId] = useState<number | null>(null);
+
   // Coupon validation handler
   const handleValidateCoupon = async () => {
     if (!couponCode.trim()) {
@@ -785,6 +794,106 @@ function ReservationPageContent() {
     setCouponMessage("");
   };
 
+  // Load Razorpay script
+  const loadRazorpayScript = (): Promise<boolean> => {
+    return new Promise((resolve) => {
+      const script = document.createElement("script");
+      script.src = "https://checkout.razorpay.com/v1/checkout.js";
+      script.async = true;
+      script.onload = () => resolve(true);
+      script.onerror = () => resolve(false);
+      document.body.appendChild(script);
+    });
+  };
+
+  // Initialize and open Razorpay checkout
+  const openRazorpayCheckout = async (
+    orderId: string,
+    amount: number,
+    keyId: string,
+    bookingRef: string,
+    guestName: string,
+    guestEmail: string,
+    guestPhone: string,
+    bookingId: number,
+  ) => {
+    const scriptLoaded = await loadRazorpayScript();
+    if (!scriptLoaded) {
+      setPaymentError("Failed to load Razorpay. Please try again.");
+      setPaymentStatus("failure");
+      return;
+    }
+
+    const options = {
+      key: keyId,
+      order_id: orderId,
+      amount: amount * 100, // Amount in paise
+      currency: "INR",
+      name: "MHOMES Resort",
+      description: `Booking ${bookingRef}`,
+      prefill: {
+        name: guestName,
+        email: guestEmail,
+        contact: guestPhone,
+      },
+      theme: {
+        color: BRAND_GOLD,
+      },
+      handler: async (response: any) => {
+        // Payment successful - verify on backend
+        setPaymentStatus("pending");
+        try {
+          const verifyRes = await fetch("/api/payments/verify", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              razorpayOrderId: orderId,
+              razorpayPaymentId: response.razorpay_payment_id,
+              razorpaySignature: response.razorpay_signature,
+              bookingId,
+            }),
+          });
+
+          const verifyData = await verifyRes.json();
+
+          if (verifyData.success) {
+            // Fetch the updated booking
+            const bookingRes = await bookingsApi.getBooking(bookingId);
+            setBookingResult(bookingRes.data.data);
+            setPaymentStatus("success");
+            setStep(4);
+          } else {
+            setPaymentError(verifyData.message || "Payment verification failed");
+            setPaymentStatus("failure");
+          }
+        } catch (err: any) {
+          setPaymentError(err.message || "Payment verification failed");
+          setPaymentStatus("failure");
+        }
+      },
+      modal: {
+        ondismiss: async () => {
+          // User closed the payment modal - expire the booking
+          try {
+            await fetch("/api/payments/expire", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ bookingId }),
+            });
+          } catch (err) {
+            console.error("Failed to expire booking:", err);
+          }
+          setPaymentStatus("failure");
+          setPaymentError("Payment cancelled");
+        },
+      },
+    };
+
+    // @ts-ignore
+    const razorpay = new window.Razorpay(options);
+    razorpay.open();
+  };
+
   const handleSearch = async () => {
     if (!checkIn || !checkOut) {
       setError("Please select check-in and check-out dates.");
@@ -842,9 +951,17 @@ function ReservationPageContent() {
     setError(null);
     setValidationErrors({});
     setLoading(true);
+    setPaymentStatus("pending");
+    
     try {
       if (!searchResult?.assignedRooms) throw new Error("No rooms selected");
       const combinedPhone = `${countryCode}${phoneNumber}`;
+      
+      // Calculate total amount with discount and GST
+      const totalAmount = Math.round(
+        ((searchResult.totalAmount || 0) - couponDiscount + ((searchResult.totalAmount || 0) * 0.05))
+      );
+      
       const payload = {
         fullName,
         phone: combinedPhone,
@@ -860,15 +977,45 @@ function ReservationPageContent() {
         couponDiscount: couponDiscount || null,
         captchaToken,
       };
+      
       const res = await bookingsApi.createBooking(payload as any);
-      setBookingResult(res.data.data);
-      setStep(4);
+      const bookingData = res.data.data;
+      const bookingId = bookingData.bookingId;
+      
+      // Store pending booking ID
+      setPendingBookingId(bookingId);
+
+      // Create Razorpay order
+      const orderRes = await fetch("/api/payments/create-order", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          bookingId,
+          amount: totalAmount,
+        }),
+      });
+
+      const orderData = await orderRes.json();
+
+      if (!orderData.success) {
+        throw new Error(orderData.message || "Failed to create payment order");
+      }
+
+      // Open Razorpay checkout
+      await openRazorpayCheckout(
+        orderData.data.orderId,
+        totalAmount,
+        orderData.data.keyId,
+        bookingData.bookingReference,
+        fullName,
+        email,
+        combinedPhone,
+        bookingId,
+      );
     } catch (err: any) {
-      const msg =
-        err?.response?.data?.message || err?.message || "Booking failed.";
+      const msg = err?.response?.data?.message || err?.message || "Booking failed.";
       setError(msg);
-      // Optional: Stay on step 3 to show error, or go back to step 1
-      // For now, we'll keep user on step 3 to see the error and try again
+      setPaymentStatus("failure");
     } finally {
       setLoading(false);
       // Reset reCAPTCHA
@@ -908,32 +1055,55 @@ function ReservationPageContent() {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 py-10">
+        {/* ─── STEP 5: PAYMENT FAILURE ──────────────────────────────────────── */}
+        {paymentStatus === "failure" && paymentError && (
+          <PaymentFailurePage
+            error={paymentError}
+            onRetry={() => {
+              setPaymentStatus("idle");
+              setPaymentError(null);
+              setStep(3);
+            }}
+            onGoHome={() => router.push("/")}
+            fullName={fullName}
+            countryCode={countryCode}
+            phoneNumber={phoneNumber}
+            email={email}
+            checkIn={searchResult?.checkIn || ""}
+            checkOut={searchResult?.checkOut || ""}
+            roomType={roomType}
+            roomCount={roomCount}
+          />
+        )}
+        
         {/* ─── STEP 4: SUCCESS ──────────────────────────────────────────────── */}
-        {step === 4 && bookingResult ? (
+        {paymentStatus !== "failure" && step === 4 && bookingResult ? (
           <SuccessPage booking={bookingResult} />
         ) : (
           <>
-            <div className="text-center mb-4">
-              <h1
-                style={{
-                  fontFamily: "Cormorant Garamond, serif",
-                  color: BUTTON_BROWN,
-                }}
-                className="text-4xl font-light mb-1"
-              >
-                Reserve Your Stay
-              </h1>
-              <p className="text-gray-600 text-sm">
-                Experience luxury at MHOMES Resort
-              </p>
-            </div>
+            {paymentStatus !== "failure" && (
+              <>
+                <div className="text-center mb-4">
+                  <h1
+                    style={{
+                      fontFamily: "Cormorant Garamond, serif",
+                      color: BUTTON_BROWN,
+                    }}
+                    className="text-4xl font-light mb-1"
+                  >
+                    Reserve Your Stay
+                  </h1>
+                  <p className="text-gray-600 text-sm">
+                    Experience luxury at MHOMES Resort
+                  </p>
+                </div>
 
-            <div className="mt-10">
-              <StepIndicator current={step} />
-            </div>
+                <div className="mt-10">
+                  <StepIndicator current={step} />
+                </div>
 
-            <AnimatePresence mode="wait">
-              <motion.div
+                <AnimatePresence mode="wait">
+                  <motion.div
                 key={step}
                 initial={{ opacity: 0, x: 30 }}
                 animate={{ opacity: 1, x: 0 }}
@@ -1515,11 +1685,11 @@ function ReservationPageContent() {
                           {loading ? (
                             <>
                               <Loader2 className="w-4 h-4 animate-spin mr-2" />{" "}
-                              Submitting…
+                              {paymentStatus === "pending" ? "Processing…" : "Submitting…"}
                             </>
                           ) : (
                             <>
-                              Reserve Now{" "}
+                              Submit & Pay{" "}
                               <ChevronRight className="w-4 h-4 ml-1" />
                             </>
                           )}
@@ -1666,6 +1836,8 @@ function ReservationPageContent() {
                 )}
               </motion.div>
             </AnimatePresence>
+              </>
+            )}
           </>
         )}
       </div>
@@ -1777,8 +1949,11 @@ function SuccessPage({ booking }: { booking: BookingResult }) {
               }}
               className="text-4xl font-light mb-2"
             >
-              Reservation Received!
+              Booking Confirmed!
             </h1>
+            <p className="text-gray-600 text-sm">
+              Payment successful! Your booking is confirmed.
+            </p>
           </div>
 
           <Card
@@ -1849,7 +2024,7 @@ function SuccessPage({ booking }: { booking: BookingResult }) {
 
           <div className="flex items-center justify-center gap-2 text-gray-500 text-sm pt-4">
             <PhoneCall className="w-4 h-4" style={{ color: BRAND_GOLD }} />
-            Our team will contact you shortly with further details.
+            Your booking confirmation has been sent to your email. Our team will contact you shortly.
           </div>
 
           <Link href="/">
@@ -1927,5 +2102,180 @@ function BookingErrorBox({
         </div>
       </div>
     </motion.div>
+  );
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// PAYMENT FAILURE PAGE
+// ═════════════════════════════════════════════════════════════════════════════
+
+interface PaymentFailurePageProps {
+  error: string;
+  onRetry: () => void;
+  onGoHome: () => void;
+  fullName: string;
+  countryCode: string;
+  phoneNumber: string;
+  email: string;
+  checkIn: string;
+  checkOut: string;
+  roomType: "premium" | "premium_plus";
+  roomCount: number;
+}
+
+function PaymentFailurePage({
+  error,
+  onRetry,
+  onGoHome,
+  fullName,
+  countryCode,
+  phoneNumber,
+  email,
+  checkIn,
+  checkOut,
+  roomType,
+  roomCount,
+}: PaymentFailurePageProps) {
+  const [showX, setShowX] = useState(false);
+  const [showCard, setShowCard] = useState(false);
+
+  useEffect(() => {
+    const timer1 = setTimeout(() => setShowX(true), 500);
+    const timer2 = setTimeout(() => setShowCard(true), 1000);
+    return () => {
+      clearTimeout(timer1);
+      clearTimeout(timer2);
+    };
+  }, []);
+
+  return (
+    <div className="max-w-2xl mx-auto text-center space-y-8">
+      {/* Animated X mark */}
+      <motion.div className="flex justify-center">
+        <svg width="120" height="120" viewBox="0 0 120 120">
+          <motion.circle
+            cx="60"
+            cy="60"
+            r="55"
+            stroke="#DC2626"
+            strokeWidth="2"
+            fill="none"
+            initial={{
+              strokeDasharray: "345.575 345.575",
+              strokeDashoffset: "345.575",
+            }}
+            animate={{ strokeDashoffset: 0 }}
+            transition={{ duration: 1, ease: "easeInOut" }}
+          />
+          {showX && (
+            <>
+              <motion.path
+                d="M 40 40 L 80 80"
+                stroke="#DC2626"
+                strokeWidth="3"
+                fill="none"
+                strokeLinecap="round"
+                initial={{ pathLength: 0 }}
+                animate={{ pathLength: 1 }}
+                transition={{ duration: 0.5 }}
+              />
+              <motion.path
+                d="M 80 40 L 40 80"
+                stroke="#DC2626"
+                strokeWidth="3"
+                fill="none"
+                strokeLinecap="round"
+                initial={{ pathLength: 0 }}
+                animate={{ pathLength: 1 }}
+                transition={{ duration: 0.5, delay: 0.1 }}
+              />
+            </>
+          )}
+        </svg>
+      </motion.div>
+
+      {showCard && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="space-y-6"
+        >
+          <div>
+            <h1
+              style={{
+                fontFamily: "Cormorant Garamond, serif",
+                color: "#DC2626",
+              }}
+              className="text-4xl font-light mb-2"
+            >
+              Payment Failed
+            </h1>
+            <p className="text-gray-600 text-sm">
+              Your payment could not be processed. Your booking has been cancelled.
+            </p>
+          </div>
+
+          <Card
+            className="border"
+            style={{
+              backgroundColor: `${CARD_LIGHT}80`,
+              borderColor: "#FCA5A5",
+            }}
+          >
+            <CardContent className="p-8">
+              <div className="space-y-4 text-left">
+                <div className="flex items-start gap-3">
+                  <AlertCircle className="w-5 h-5 text-red-600 mt-0.5 shrink-0" />
+                  <div>
+                    <p className="text-red-800 text-sm font-medium">Error:</p>
+                    <p className="text-red-700 text-sm mt-1">{error}</p>
+                  </div>
+                </div>
+
+                <div
+                  style={{ borderColor: "#FCA5A5" }}
+                  className="border-t pt-4"
+                >
+                  <p className="text-gray-600 text-xs mb-3">
+                    You can try the payment again with the same booking details:
+                  </p>
+                  <div className="space-y-2 text-xs text-gray-700">
+                    <p>
+                      <span className="font-medium">Guest:</span> {fullName}
+                    </p>
+                    <p>
+                      <span className="font-medium">Dates:</span>{" "}
+                      {formatDate(checkIn)} to {formatDate(checkOut)}
+                    </p>
+                    <p>
+                      <span className="font-medium">Rooms:</span>{" "}
+                      {formatRoomType(roomType)} x {roomCount}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Button
+              onClick={onRetry}
+              style={{ backgroundColor: BUTTON_BROWN }}
+              className="text-white font-semibold py-3 hover:opacity-90"
+            >
+              <AlertCircle className="w-4 h-4 mr-2" /> Retry Payment
+            </Button>
+            <Button
+              onClick={onGoHome}
+              style={{ backgroundColor: BRAND_GOLD, color: BUTTON_BROWN }}
+              className="font-semibold py-3 hover:opacity-90"
+            >
+              <Home className="w-4 h-4 mr-2" /> Go Back to Home
+            </Button>
+          </div>
+        </motion.div>
+      )}
+    </div>
   );
 }

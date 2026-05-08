@@ -470,7 +470,7 @@ export const createOnlineBooking = async (
         checkIn: ciDate,
         checkOut: coDate,
         totalGuests: parseInt(String(totalGuests)),
-        bookingStatus: "pending",
+        bookingStatus: "payment_pending",
         bookingSource,
         totalAmount: totalWithGst,
         extraExpense: extraExpense || null,

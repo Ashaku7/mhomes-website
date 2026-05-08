@@ -75,6 +75,9 @@ export const bookingsApi = {
   createBooking: (data: CreateBookingData) =>
     api.post("/api/bookings/online", data),
 
+  getBooking: (bookingId: number) =>
+    api.get(`/api/bookings/${bookingId}`),
+
   confirmPayment: (
     bookingId: number,
     amount: number,

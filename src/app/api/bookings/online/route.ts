@@ -98,38 +98,11 @@ export async function POST(request: NextRequest) {
       couponDiscount: couponDiscount ? parseFloat(couponDiscount) : null,
     });
 
-    // Send confirmation email (do not break booking if email fails)
-    console.log('[BOOKING] Result:', JSON.stringify(result, null, 2))
-
-    if (result && result.bookingReference && result.guest && result.guest.email) {
-      console.log('[BOOKING] Sending email to:', result.guest.email)
-      const roomType =
-        result.rooms && result.rooms[0] ? result.rooms[0].roomType : "premium";
-      const roomCount = result.rooms ? result.rooms.length : roomIds.length;
-      const totalAmount = result.totalAmount || 0;
-      const originalAmount = result.originalAmount || totalAmount;
-      const couponDiscount = result.couponDiscount || 0;
-      const gstAmount = result.gstAmount || 0;
-
-      await sendBookingConfirmation(
-        result.guest.fullName,
-        result.guest.email,
-        result.bookingReference,
-        result.checkIn,
-        result.checkOut,
-        roomType,
-        roomCount,
-        totalAmount,
-        originalAmount,
-        couponCode || undefined,
-        couponDiscount,
-        gstAmount,
-        couponDiscount > 0 ? ((couponDiscount / originalAmount) * 100) : undefined,
-      );
-    }
+    // Email will be sent after payment verification
+    console.log('[BOOKING] Booking created with payment_pending status, awaiting payment verification');
 
     return NextResponse.json(
-      { success: true, data: result, message: "Booking created successfully" },
+      { success: true, data: result, message: "Booking created successfully. Please complete payment to confirm." },
       { status: 201 },
     );
   } catch (err) {
