@@ -6,14 +6,45 @@ const FROM_EMAIL = "contact-us@mhomes.co.in";
 
 /**
  * Format date to readable format (e.g., "April 5, 2026")
+ * Expects YYYY-MM-DD format string
  */
 const formatDate = (dateStr: string): string => {
-  const date = new Date(dateStr + "T00:00:00Z");
-  return date.toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
+  try {
+    // Expected format: YYYY-MM-DD
+    const parts = dateStr.split("-");
+    if (parts.length !== 3) {
+      console.warn("[EMAIL] Invalid date format:", dateStr);
+      return "Invalid Date";
+    }
+
+    const year = parseInt(parts[0], 10);
+    const month = parseInt(parts[1], 10);
+    const day = parseInt(parts[2], 10);
+
+    if (isNaN(year) || isNaN(month) || isNaN(day)) {
+      console.warn("[EMAIL] Invalid date values:", dateStr);
+      return "Invalid Date";
+    }
+
+    // Create date in UTC
+    const date = new Date(Date.UTC(year, month - 1, day));
+
+    if (isNaN(date.getTime())) {
+      console.warn("[EMAIL] Date parsing failed:", dateStr);
+      return "Invalid Date";
+    }
+
+    // Format using UTC timezone
+    return date.toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+      timeZone: "UTC",
+    });
+  } catch (error) {
+    console.error("[EMAIL] Error formatting date:", error);
+    return "Invalid Date";
+  }
 };
 
 /**
@@ -98,10 +129,12 @@ export const sendBookingConfirmation = async (
     const roomTypeFormatted =
       roomType === "premium_plus" ? "Premium Plus" : "Premium";
 
-    // Calculate discounted subtotal if coupon is applied
-    const discountedSubtotal = originalAmount && couponDiscount 
-      ? originalAmount - couponDiscount 
-      : originalAmount || totalAmount;
+    // Use passed original values directly - no calculations
+    const roomRate = originalAmount || totalAmount;
+    const discountAmount = couponDiscount || 0;
+    const subtotalAfterDiscount = roomRate - discountAmount;
+    const gst = gstAmount || 0;
+    const finalTotal = totalAmount;
 
     const htmlContent = `
       <html>
@@ -118,11 +151,7 @@ export const sendBookingConfirmation = async (
             <h2 style="color: #6B3F2A; font-size: 20px; margin: 0 0 10px 0;">Hello ${guestName},</h2>
             
             <p style="color: #1A1A1A; margin: 15px 0;">
-              Thank you for choosing MHOMES Resort! Your reservation has been received and we're thrilled to have you join us.
-            </p>
-
-            <p style="color: #1A1A1A; margin: 15px 0;">
-              Our team will contact you shortly to confirm your booking and discuss payment details.
+              Thank you for choosing MHOMES Resort! Your Booking has been confirmed and we're thrilled to have you join us.
             </p>
 
             <!-- Booking Details Box -->
@@ -163,25 +192,25 @@ export const sendBookingConfirmation = async (
               <div style="font-size: 14px;">
                 <div style="display: flex; justify-content: space-between; margin: 10px 0;">
                   <span style="color: #6B6B6B;">Subtotal (Original):</span>
-                  <span style="color: #1A1A1A; font-weight: 600;">₹${(originalAmount || totalAmount).toLocaleString("en-IN")}</span>
+                  <span style="color: #1A1A1A; font-weight: 600;">₹${Math.round(roomRate).toLocaleString("en-IN")}</span>
                 </div>
                 ${couponCode ? `
                 <div style="display: flex; justify-content: space-between; margin: 10px 0; color: #22c55e;">
-                  <span>Coupon Discount (${couponCode} -${discountPercentage || 0}%):</span>
-                  <span style="font-weight: 600;">-₹${(couponDiscount || 0).toLocaleString("en-IN")}</span>
+                  <span>Coupon Discount (${couponCode} -${discountPercentage ? Math.round(discountPercentage) : 0}%):</span>
+                  <span style="font-weight: 600;">-₹${Math.round(discountAmount).toLocaleString("en-IN")}</span>
                 </div>
                 <div style="display: flex; justify-content: space-between; margin: 10px 0; padding-top: 10px; border-top: 1px solid #E8E4DC;">
                   <span style="color: #6B6B6B;">Subtotal (After Discount):</span>
-                  <span style="color: #1A1A1A; font-weight: 600;">₹${discountedSubtotal.toLocaleString("en-IN")}</span>
+                  <span style="color: #1A1A1A; font-weight: 600;">₹${Math.round(subtotalAfterDiscount).toLocaleString("en-IN")}</span>
                 </div>
                 ` : ''}
                 <div style="display: flex; justify-content: space-between; margin: 10px 0;">
                   <span style="color: #6B6B6B;">GST (5% on original):</span>
-                  <span style="color: #1A1A1A; font-weight: 600;">₹${(gstAmount || 0).toLocaleString("en-IN")}</span>
+                  <span style="color: #1A1A1A; font-weight: 600;">₹${Math.round(gst).toLocaleString("en-IN")}</span>
                 </div>
                 <div style="display: flex; justify-content: space-between; margin: 15px 0; padding-top: 10px; border-top: 2px solid #C9A84C;">
                   <span style="color: #C9A84C; font-weight: 700; font-size: 16px;">Total Amount:</span>
-                  <span style="color: #C9A84C; font-weight: 700; font-size: 16px;">₹${totalAmount.toLocaleString("en-IN")}</span>
+                  <span style="color: #C9A84C; font-weight: 700; font-size: 16px;">₹${Math.round(finalTotal).toLocaleString("en-IN")}</span>
                 </div>
               </div>
             </div>

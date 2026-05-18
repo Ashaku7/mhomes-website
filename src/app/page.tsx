@@ -1136,7 +1136,7 @@ export default function Home() {
               ))}
             </div>
 
-            {/* Reserve now Button — desktop */}
+            {/* book now Button — desktop */}
             <motion.div
               className="hidden lg:flex items-center gap-4"
               initial={{ opacity: 0 }}
@@ -1145,7 +1145,7 @@ export default function Home() {
             >
               <Link href="reservation">
                 <Button className="bg-primary hover:bg-primary/90 text-primary-foreground px-5 py-1.5 shadow-md transition-colors duration-200 rounded-lg" style={{ fontFamily: 'var(--font-label)', fontSize: '12px', fontWeight: 500, letterSpacing: '0.1em', textTransform: 'uppercase' as const }}>
-                  Reserve now
+                  book now
                 </Button>
               </Link>
             </motion.div>
@@ -1189,11 +1189,11 @@ export default function Home() {
                   </Link>
                 </motion.div>
               ))}
-              {/* Mobile Reserve now button */}
+              {/* Mobile book now button */}
               <div className="border-t border-primary/10 pt-3">
                 <Link href="#booking" onClick={() => setIsMenuOpen(false)} className="w-full">
                   <Button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold rounded-lg transition-colors duration-200">
-                    Reserve now
+                    book now
                   </Button>
                 </Link>
               </div>
@@ -1761,7 +1761,7 @@ export default function Home() {
                       >
                         <Link href={`/reservation?roomType=${room.name === 'Premium Room' ? 'premium' : 'premium_plus'}`} className="w-full">
                           <Button size="lg" className="w-full bg-primary hover:bg-primary/90 text-primary-foreground hover:shadow-xl px-12 py-4 text-lg rounded-lg font-semibold transition-all duration-200">
-                            Reserve now
+                            book now
                             <ArrowRight className="ml-2 w-5 h-5" />
                           </Button>
                         </Link>

@@ -839,6 +839,26 @@ function ReservationPageContent() {
       theme: {
         color: BRAND_GOLD,
       },
+      config: {
+        display: {
+          blocks: {
+            upi: {
+              name: "UPI",
+              instruments: [{ method: "upi" }]
+            },
+            card: {
+              name: "Cards",
+              instruments: [{ method: "card" }]
+            },
+            netbanking: {
+              name: "Netbanking",
+              instruments: [{ method: "netbanking" }]
+            }
+          },
+          sequence: ["block.upi", "block.card", "block.netbanking"],
+          preferences: { show_default_blocks: false }
+        }
+      },
       handler: async (response: any) => {
         // Payment successful - verify on backend
         setPaymentStatus("pending");
@@ -1145,11 +1165,11 @@ function ReservationPageContent() {
                             options={[
                               {
                                 value: "premium",
-                              label: "Premium (₹6,000/night)",
+                              label: "Premium (₹5,500/night)",
                               },
                               {
                                 value: "premium_plus",
-                                label: "Premium Plus (₹6,500/night)",
+                                label: "Premium Plus (₹6,000/night)",
                               },
                             ]}
                           />
@@ -1397,7 +1417,7 @@ function ReservationPageContent() {
                                       style={{ backgroundColor: BUTTON_BROWN }}
                                       className="w-full text-white font-semibold py-3 hover:opacity-90"
                                     >
-                                      Reserve Now{" "}
+                                      book now{" "}
                                       <ChevronRight className="w-4 h-4 ml-1" />
                                     </Button>
                                   </div>

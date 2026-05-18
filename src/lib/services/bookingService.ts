@@ -472,6 +472,8 @@ export const createOnlineBooking = async (
         totalGuests: parseInt(String(totalGuests)),
         bookingStatus: "payment_pending",
         bookingSource,
+        originalAmount: originalSubtotal,
+        gstAmount: gstAmount,
         totalAmount: totalWithGst,
         extraExpense: extraExpense || null,
         couponCode: couponCode || null,

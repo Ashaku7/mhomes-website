@@ -133,25 +133,37 @@ export async function POST(request: NextRequest) {
             : "premium";
         const roomCount = finalBooking.bookingRooms ? finalBooking.bookingRooms.length : 1;
         const totalAmount = Number(finalBooking.totalAmount) || 0;
+        const originalAmount = Number(finalBooking.originalAmount) || totalAmount;
+        const gstAmount = Number(finalBooking.gstAmount) || 0;
         const couponDiscountAmount = Number(finalBooking.couponDiscount) || 0;
-        const originalAmount = totalAmount + couponDiscountAmount;
         const couponCode = finalBooking.couponCode || undefined;
-        const discountPercentage = couponDiscountAmount > 0 ? ((couponDiscountAmount / originalAmount) * 100) : undefined;
+        const discountPercentage = couponDiscountAmount > 0 && originalAmount > 0 
+          ? ((couponDiscountAmount / originalAmount) * 100) 
+          : undefined;
+
+        // Format dates as YYYY-MM-DD strings
+        const checkInDate = finalBooking.checkIn instanceof Date 
+          ? finalBooking.checkIn.toISOString().split('T')[0]
+          : String(finalBooking.checkIn).split('T')[0];
+        const checkOutDate = finalBooking.checkOut instanceof Date 
+          ? finalBooking.checkOut.toISOString().split('T')[0]
+          : String(finalBooking.checkOut).split('T')[0];
 
         console.log("[PAYMENT VERIFY] Sending confirmation email to:", finalBooking.guest.email);
+        console.log("[PAYMENT VERIFY] Check-in date:", checkInDate, "Check-out date:", checkOutDate);
         await sendBookingConfirmation(
           finalBooking.guest.fullName,
           finalBooking.guest.email,
           finalBooking.bookingReference,
-          String(finalBooking.checkIn),
-          String(finalBooking.checkOut),
+          checkInDate,
+          checkOutDate,
           roomType,
           roomCount,
           totalAmount,
           originalAmount,
           couponCode,
           couponDiscountAmount,
-          undefined,
+          gstAmount,
           discountPercentage,
         );
       } catch (emailErr) {

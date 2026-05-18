@@ -136,7 +136,7 @@ export default function ReviewsPage() {
                     textTransform: "uppercase" as const,
                   }}
                 >
-                  Reserve now
+                  book now
                 </Button>
               </Link>
             </div>
@@ -193,7 +193,7 @@ export default function ReviewsPage() {
                   className="w-full"
                 >
                   <Button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold rounded-lg transition-colors duration-200">
-                    Reserve now
+                    book now
                   </Button>
                 </Link>
               </div>
