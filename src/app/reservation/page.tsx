@@ -552,13 +552,6 @@ function ReservationSelect({
     return () => document.removeEventListener("mousedown", handler);
   }, [open]);
 
-  useEffect(() => {
-    if (!open) return;
-    const onScroll = () => setOpen(false);
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, [open]);
-
   const selectedLabel =
     options.find((o) => String(o.value) === String(value))?.label ??
     String(value);
@@ -681,6 +674,160 @@ function StepIndicator({ current }: { current: number }) {
   );
 }
 
+// ─── Payment Timer Widget (Top Banner)
+function PaymentTimerWidget({ 
+  timerSeconds, 
+  isActive 
+}: { 
+  timerSeconds: number; 
+  isActive: boolean;
+}) {
+  if (!isActive) return null;
+  if (isNaN(timerSeconds)) {
+    return null;
+  }
+  
+  const minutes = Math.floor(timerSeconds / 60);
+  const seconds = timerSeconds % 60;
+  const timeStr = `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+
+  return (
+    <div
+      style={{
+        position: "fixed",
+        top: 0,
+        left: 0,
+        right: 0,
+        zIndex: 99999, // Above Razorpay popup
+        backgroundColor: "#C9A84C", // Brand gold
+        color: "white",
+        height: "48px",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        fontSize: "16px",
+        fontWeight: "bold",
+        fontFamily: "inherit",
+      }}
+    >
+      <span style={{ marginRight: "8px" }}>⏱</span>
+      <span>{timeStr} remaining to complete payment</span>
+    </div>
+  );
+}
+
+// ─── Force Close Razorpay Popup
+function forceCloseRazorpay(razorpayInstanceRef: any) {
+  // Method 1: Use razorpay instance
+  try {
+    razorpayInstanceRef.current?.close();
+  } catch (e) {
+    console.error("Razorpay close() failed:", e);
+  }
+
+  // Method 2: Remove all Razorpay DOM elements
+  const selectors = [
+    ".razorpay-container",
+    ".razorpay-backdrop",
+    "#razorpay-overlay",
+    'iframe[src*="razorpay"]',
+    'div[id*="razorpay"]',
+  ];
+  selectors.forEach((selector) => {
+    try {
+      document.querySelectorAll(selector).forEach((el) => el.remove());
+    } catch (e) {
+      console.error(`Failed to remove ${selector}:`, e);
+    }
+  });
+
+  // Method 3: Basic body scroll restoration
+  try {
+    document.body.style.overflow = "";
+    document.body.style.position = "";
+    document.documentElement.style.overflow = "";
+    
+    // Remove any razorpay classes
+    document.body.className = document.body.className.replace(/razorpay-\w+/g, "");
+  } catch (e) {
+    console.error("Failed to restore page styles:", e);
+  }
+}
+
+// ─── Verifying Payment Overlay
+function VerifyingPaymentOverlay({ isActive }: { isActive: boolean }) {
+  if (!isActive) return null;
+
+  return (
+    <div
+      style={{
+        position: "fixed",
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: "rgba(0, 0, 0, 0.7)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        zIndex: 50, // Higher than payment timer but lower than Razorpay modal
+      }}
+    >
+      <div
+        style={{
+          backgroundColor: "#ffffff",
+          borderRadius: "12px",
+          padding: "32px",
+          textAlign: "center",
+          boxShadow: "0 10px 40px rgba(0,0,0,0.3)",
+          maxWidth: "320px",
+        }}
+      >
+        {/* Spinner */}
+        <div
+          style={{
+            width: "48px",
+            height: "48px",
+            marginBottom: "20px",
+            margin: "0 auto 20px",
+            borderRadius: "50%",
+            border: "4px solid #f0f0f0",
+            borderTopColor: "#C9A84C",
+            animation: "spin 1s linear infinite",
+          }}
+        />
+        <style>{`
+          @keyframes spin {
+            to { transform: rotate(360deg); }
+          }
+        `}</style>
+
+        <h3
+          style={{
+            fontSize: "18px",
+            fontWeight: "600",
+            color: "#1a1a1a",
+            marginBottom: "8px",
+            fontFamily: "inherit",
+          }}
+        >
+          Verifying Payment
+        </h3>
+        <p
+          style={{
+            fontSize: "14px",
+            color: "#666666",
+            marginBottom: 0,
+            fontFamily: "inherit",
+          }}
+        >
+          Please wait while we verify your payment...
+        </p>
+      </div>
+    </div>
+  );
+}
+
 // ─── Main Component
 function ReservationPageContent() {
   const router = useRouter();
@@ -732,6 +879,52 @@ function ReservationPageContent() {
   const [paymentStatus, setPaymentStatus] = useState<"idle" | "pending" | "success" | "failure">("idle");
   const [paymentError, setPaymentError] = useState<string | null>(null);
   const [pendingBookingId, setPendingBookingId] = useState<number | null>(null);
+  const [isVerifyingPayment, setIsVerifyingPayment] = useState(false);
+
+  // Payment Timer state (10 minutes = 600 seconds)
+  const [paymentTimerSeconds, setPaymentTimerSeconds] = useState(600);
+  const [paymentTimerActive, setPaymentTimerActive] = useState(false);
+
+  // Razorpay instance ref
+  const razorpayInstanceRef = useRef<any>(null);
+
+  // Payment timer countdown effect
+  useEffect(() => {
+    if (!paymentTimerActive || paymentTimerSeconds <= 0) {
+      if (paymentTimerSeconds <= 0 && paymentTimerActive && pendingBookingId) {
+        // Timer expired - force close Razorpay popup first, then expire the booking
+        (async () => {
+          try {
+            // Force close the Razorpay popup
+            forceCloseRazorpay(razorpayInstanceRef);
+            
+            // Wait for popup to be fully removed
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
+            // Then expire the booking
+            await fetch("/api/payments/expire", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ bookingId: pendingBookingId }),
+            });
+          } catch (err) {
+            console.error("Failed to expire booking:", err);
+          }
+          setPaymentTimerActive(false);
+          setIsVerifyingPayment(false);
+          setPaymentError("Payment session expired. Please try again.");
+          setPaymentStatus("failure");
+        })();
+      }
+      return;
+    }
+
+    const interval = setInterval(() => {
+      setPaymentTimerSeconds((prev) => Math.max(0, prev - 1));
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [paymentTimerActive, paymentTimerSeconds, pendingBookingId]);
 
   // Coupon validation handler
   const handleValidateCoupon = async () => {
@@ -816,6 +1009,7 @@ function ReservationPageContent() {
     guestEmail: string,
     guestPhone: string,
     bookingId: number,
+    expiresAt: string,
   ) => {
     const scriptLoaded = await loadRazorpayScript();
     if (!scriptLoaded) {
@@ -860,8 +1054,11 @@ function ReservationPageContent() {
         }
       },
       handler: async (response: any) => {
-        // Payment successful - verify on backend
+        // Payment successful - verify on backend and clear timer
+        setIsVerifyingPayment(true);
         setPaymentStatus("pending");
+        setPaymentTimerActive(false);
+        setPaymentTimerSeconds(600);
         try {
           const verifyRes = await fetch("/api/payments/verify", {
             method: "POST",
@@ -882,18 +1079,24 @@ function ReservationPageContent() {
             setBookingResult(bookingRes.data.data);
             setPaymentStatus("success");
             setStep(4);
+            setIsVerifyingPayment(false);
           } else {
             setPaymentError(verifyData.message || "Payment verification failed");
             setPaymentStatus("failure");
+            setIsVerifyingPayment(false);
           }
         } catch (err: any) {
           setPaymentError(err.message || "Payment verification failed");
           setPaymentStatus("failure");
+          setIsVerifyingPayment(false);
         }
       },
       modal: {
         ondismiss: async () => {
-          // User closed the payment modal - expire the booking
+          // User closed the payment modal - stop timer and expire the booking
+          setIsVerifyingPayment(true);
+          setPaymentTimerActive(false);
+          setPaymentTimerSeconds(600);
           try {
             await fetch("/api/payments/expire", {
               method: "POST",
@@ -905,13 +1108,33 @@ function ReservationPageContent() {
           }
           setPaymentStatus("failure");
           setPaymentError("Payment cancelled");
+          setIsVerifyingPayment(false);
         },
       },
     };
 
     // @ts-ignore
-    const razorpay = new window.Razorpay(options);
-    razorpay.open();
+    const rzp = new (window as any).Razorpay(options);
+    razorpayInstanceRef.current = rzp;
+    rzp.open();
+
+    // Start payment timer when popup opens
+    setPaymentTimerActive(true);
+    // Calculate remaining seconds from expiresAt
+    try {
+      const expirationTime = new Date(expiresAt).getTime();
+      if (isNaN(expirationTime)) {
+        // If expiresAt is invalid, use default 10 minutes
+        setPaymentTimerSeconds(600);
+      } else {
+        const remainingMs = expirationTime - Date.now();
+        const remainingSeconds = Math.max(0, Math.ceil(remainingMs / 1000));
+        setPaymentTimerSeconds(remainingSeconds);
+      }
+    } catch (err) {
+      console.error("Error calculating timer:", err);
+      setPaymentTimerSeconds(600);
+    }
   };
 
   const handleSearch = async () => {
@@ -1031,6 +1254,7 @@ function ReservationPageContent() {
         email,
         combinedPhone,
         bookingId,
+        bookingData.expiresAt,
       );
     } catch (err: any) {
       const msg = err?.response?.data?.message || err?.message || "Booking failed.";
@@ -1051,6 +1275,15 @@ function ReservationPageContent() {
       style={{ backgroundColor: BG_LIGHT }}
       className="min-h-screen text-gray-900"
     >
+      {/* Verifying Payment Overlay */}
+      <VerifyingPaymentOverlay isActive={isVerifyingPayment && paymentStatus !== "failure"} />
+
+      {/* Payment Timer Widget */}
+      <PaymentTimerWidget 
+        timerSeconds={paymentTimerSeconds}
+        isActive={paymentTimerActive}
+      />
+
       {/* Header */}
       <div
         className="border-b sticky top-0 z-40 backdrop-blur-sm"
@@ -1074,7 +1307,7 @@ function ReservationPageContent() {
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 py-10">
+      <div className="max-w-7xl mx-auto px-4 py-10 pb-32">
         {/* ─── STEP 5: PAYMENT FAILURE ──────────────────────────────────────── */}
         {paymentStatus === "failure" && paymentError && (
           <PaymentFailurePage
@@ -2169,7 +2402,9 @@ function PaymentFailurePage({
   }, []);
 
   return (
-    <div className="max-w-2xl mx-auto text-center space-y-8">
+    <div 
+      className="max-w-2xl mx-auto text-center space-y-8"
+    >
       {/* Animated X mark */}
       <motion.div className="flex justify-center">
         <svg width="120" height="120" viewBox="0 0 120 120">
