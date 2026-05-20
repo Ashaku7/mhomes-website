@@ -38,11 +38,25 @@ export async function POST(request: NextRequest) {
         providedSignature: razorpaySignature,
       });
 
-      // Mark booking as expired and release room lock
+      // Mark booking as expired and release room locks
+      const bookingWithRooms = await prisma.booking.findUnique({
+        where: { id: parseInt(String(bookingId)) },
+        include: { bookingRooms: true },
+      });
+
       await prisma.booking.update({
         where: { id: parseInt(String(bookingId)) },
         data: { bookingStatus: "expired" },
       });
+
+      // Free the rooms by setting them back to active
+      if (bookingWithRooms?.bookingRooms && bookingWithRooms.bookingRooms.length > 0) {
+        const roomIds = bookingWithRooms.bookingRooms.map((br) => br.roomId);
+        await prisma.room.updateMany({
+          where: { id: { in: roomIds } },
+          data: { status: "active" },
+        });
+      }
 
       return NextResponse.json(
         {

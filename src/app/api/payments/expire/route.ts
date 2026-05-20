@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Mark booking as expired (this releases room lock automatically)
+    // Mark booking as expired and release room locks
     const updatedBooking = await prisma.booking.update({
       where: { id: parseInt(String(bookingId)) },
       data: {
@@ -46,6 +46,15 @@ export async function POST(request: NextRequest) {
         razorpayOrderId: null, // Clear order ID
       },
     });
+
+    // Free the rooms by setting them back to active
+    if (booking.bookingRooms && booking.bookingRooms.length > 0) {
+      const roomIds = booking.bookingRooms.map((br) => br.roomId);
+      await prisma.room.updateMany({
+        where: { id: { in: roomIds } },
+        data: { status: "active" },
+      });
+    }
 
     return NextResponse.json(
       {
