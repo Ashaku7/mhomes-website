@@ -1258,7 +1258,7 @@ function ReservationPageContent() {
       );
     } catch (err: any) {
       const msg = err?.response?.data?.message || err?.message || "Booking failed.";
-      setError(msg);
+      setPaymentError(msg);
       setPaymentStatus("failure");
     } finally {
       setLoading(false);
