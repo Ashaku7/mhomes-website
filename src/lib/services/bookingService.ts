@@ -381,29 +381,31 @@ export const createOnlineBooking = async (
   const bookingReference = await generateBookingReference();
 
   const booking = await prisma.$transaction(async (tx: any) => {
+    // Lock rooms with SKIP LOCKED - only locks available rooms
     const lockedRooms = await tx.$queryRawUnsafe(
       `SELECT id, room_number, room_type, max_guests, price_per_night, status
        FROM rooms
        WHERE id = ANY($1::int[])
-       FOR UPDATE`,
+       AND status = 'active'
+       FOR UPDATE SKIP LOCKED`,
       sanitizedRoomIds,
     );
 
-    if (lockedRooms.length !== sanitizedRoomIds.length) {
-      throw createError(404, "One or more selected rooms do not exist.");
-    }
-
-    const unavailableRooms = lockedRooms.filter(
-      (r: any) => r.status !== "active",
-    );
-    if (unavailableRooms.length > 0) {
-      const nums = unavailableRooms.map((r: any) => r.room_number).join(", ");
+    // Check if we locked all requested rooms
+    if (lockedRooms.length < sanitizedRoomIds.length) {
       throw createError(
         409,
-        `Room(s) ${nums} are currently under maintenance.`,
+        "Room is no longer available. Please select another room.",
       );
     }
 
+    // Immediately update room status to 'occupied' before creating booking
+    await tx.room.updateMany({
+      where: { id: { in: sanitizedRoomIds } },
+      data: { status: "occupied" },
+    });
+
+    // Verify no conflicting bookings exist
     const conflictingBookings = await tx.bookingRoom.findMany({
       where: {
         roomId: { in: sanitizedRoomIds },

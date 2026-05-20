@@ -24,6 +24,7 @@ enum RoomType {
 
 enum RoomStatus {
   active
+  occupied
   maintenance
 }
 
