@@ -60,7 +60,7 @@ export default function SitemapPage() {
               href="/reservation"
               className="inline-flex items-center rounded-lg bg-[#6B3F2A] px-4 py-2 text-xs font-medium text-white transition hover:bg-[#4F2D1E] luxury-label"
             >
-              book now
+              Book Now
             </Link>
           </div>
         </div>

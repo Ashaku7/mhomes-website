@@ -1673,7 +1673,7 @@ function ReservationPageContent() {
                                       style={{ backgroundColor: BUTTON_BROWN }}
                                       className="w-full text-white font-semibold py-3 hover:opacity-90"
                                     >
-                                      book now{" "}
+                                      Book Now{" "}
                                       <ChevronRight className="w-4 h-4 ml-1" />
                                     </Button>
                                   </div>

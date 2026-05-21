@@ -1137,7 +1137,7 @@ export default function Home() {
               ))}
             </div>
 
-            {/* book now Button — desktop */}
+            {/* Book Now Button — desktop */}
             <motion.div
               className="hidden lg:flex items-center gap-4"
               initial={{ opacity: 0 }}
@@ -1149,7 +1149,7 @@ export default function Home() {
                 className="bg-primary hover:bg-primary/90 text-primary-foreground px-5 py-1.5 shadow-md transition-colors duration-200 rounded-lg" 
                 style={{ fontFamily: 'var(--font-label)', fontSize: '12px', fontWeight: 500, letterSpacing: '0.1em', textTransform: 'uppercase' as const }}
               >
-                book now
+                Book Now
               </ProtectedBookingButton>
             </motion.div>
 
@@ -1192,11 +1192,11 @@ export default function Home() {
                   </Link>
                 </motion.div>
               ))}
-              {/* Mobile book now button */}
+              {/* Mobile Book Now button */}
               <div className="border-t border-primary/10 pt-3">
                 <Link href="#booking" onClick={() => setIsMenuOpen(false)} className="w-full">
                   <Button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold rounded-lg transition-colors duration-200">
-                    book now
+                    Book Now
                   </Button>
                 </Link>
               </div>
@@ -1766,7 +1766,7 @@ export default function Home() {
                           onClick={() => router.push(`/reservation?roomType=${room.name === 'Premium Room' ? 'premium' : 'premium_plus'}`)}
                           className="w-full bg-primary hover:bg-primary/90 text-primary-foreground hover:shadow-xl px-8 py-2 text-base rounded-lg font-semibold transition-all duration-200 flex items-center justify-center gap-2"
                         >
-                          book now
+                          Book Now
                           <ArrowRight className="ml-2 w-4 h-4" />
                         </ProtectedBookingButton>
                       </motion.div>

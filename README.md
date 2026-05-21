@@ -115,7 +115,7 @@ MHOMES-resort/
 
 The website features 10 comprehensive sections:
 
-1. **Navigation Bar** - Fixed header with logo, menu, and "book now" CTA button
+1. **Navigation Bar** - Fixed header with logo, menu, and "Book Now" CTA button
 2. **Hero Section** - Video background with resort name, tagline, and search form
 3. **Luxury Redefined** - Amenities showcase with 5 circular icon cards
 4. **Story Section** - 4-part narrative (4 of M) with images and descriptions
