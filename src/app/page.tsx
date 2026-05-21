@@ -63,6 +63,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
+import { ProtectedBookingButton } from '@/components/ProtectedBookingButton'
 
 // ═════════════════════════════════════════════════════════════════════════════
 // DATE RANGE PICKER COMPONENT
@@ -1143,11 +1144,13 @@ export default function Home() {
               animate={{ opacity: 1 }}
               transition={{ delay: 0.3 }}
             >
-              <Link href="reservation">
-                <Button className="bg-primary hover:bg-primary/90 text-primary-foreground px-5 py-1.5 shadow-md transition-colors duration-200 rounded-lg" style={{ fontFamily: 'var(--font-label)', fontSize: '12px', fontWeight: 500, letterSpacing: '0.1em', textTransform: 'uppercase' as const }}>
-                  book now
-                </Button>
-              </Link>
+              <ProtectedBookingButton 
+                onClick={() => router.push("reservation")}
+                className="bg-primary hover:bg-primary/90 text-primary-foreground px-5 py-1.5 shadow-md transition-colors duration-200 rounded-lg" 
+                style={{ fontFamily: 'var(--font-label)', fontSize: '12px', fontWeight: 500, letterSpacing: '0.1em', textTransform: 'uppercase' as const }}
+              >
+                book now
+              </ProtectedBookingButton>
             </motion.div>
 
             <motion.div
@@ -1759,12 +1762,13 @@ export default function Home() {
                         whileHover={{ scale: 1.02 }}
                         whileTap={{ scale: 0.98 }}
                       >
-                        <Link href={`/reservation?roomType=${room.name === 'Premium Room' ? 'premium' : 'premium_plus'}`} className="w-full">
-                          <Button size="lg" className="w-full bg-primary hover:bg-primary/90 text-primary-foreground hover:shadow-xl px-12 py-4 text-lg rounded-lg font-semibold transition-all duration-200">
-                            book now
-                            <ArrowRight className="ml-2 w-5 h-5" />
-                          </Button>
-                        </Link>
+                        <ProtectedBookingButton 
+                          onClick={() => router.push(`/reservation?roomType=${room.name === 'Premium Room' ? 'premium' : 'premium_plus'}`)}
+                          className="w-full bg-primary hover:bg-primary/90 text-primary-foreground hover:shadow-xl px-8 py-2 text-base rounded-lg font-semibold transition-all duration-200 flex items-center justify-center gap-2"
+                        >
+                          book now
+                          <ArrowRight className="ml-2 w-4 h-4" />
+                        </ProtectedBookingButton>
                       </motion.div>
                       <motion.div
                         whileHover={{ scale: 1.02 }}
@@ -1863,14 +1867,13 @@ export default function Home() {
                 </Button>
               </motion.div>
               <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                <Link href={`/reservation?roomType=${selectedAmenitiesRoom === 'Premium Room' ? 'premium' : 'premium_plus'}`}>
-                  <Button
-                    className="bg-primary hover:bg-primary/90 text-primary-foreground px-8 py-3 text-lg font-semibold rounded-lg hover:shadow-xl transition-all"
-                  >
-                    Book This Room
-                    <ArrowRight className="ml-2 w-5 h-5" />
-                  </Button>
-                </Link>
+                <ProtectedBookingButton 
+                  onClick={() => router.push(`/reservation?roomType=${selectedAmenitiesRoom === 'Premium Room' ? 'premium' : 'premium_plus'}`)}
+                  className="bg-primary hover:bg-primary/90 text-primary-foreground px-8 py-3 text-lg font-semibold rounded-lg hover:shadow-xl transition-all flex items-center justify-center gap-2"
+                >
+                  Book This Room
+                  <ArrowRight className="ml-2 w-5 h-5" />
+                </ProtectedBookingButton>
               </motion.div>
             </motion.div>
           </motion.div>
@@ -2267,15 +2270,13 @@ export default function Home() {
               whileTap={{ scale: 0.98 }}
               className="mt-10"
             >
-              <Link href="/reservation">
-                <Button
-                  size="lg"
-                  className="bg-primary hover:bg-primary/90 text-primary-foreground px-8 py-4 text-base font-semibold rounded-lg shadow-xl hover:shadow-2xl transition-all inline-flex items-center gap-2"
-                >
-                  Book Now
-                  <ArrowRight className="w-4 h-4" />
-                </Button>
-              </Link>
+              <ProtectedBookingButton 
+                onClick={() => router.push("/reservation")}
+                className="bg-primary hover:bg-primary/90 text-primary-foreground px-8 py-4 text-base font-semibold rounded-lg shadow-xl hover:shadow-2xl transition-all inline-flex items-center gap-2"
+              >
+                Book Now
+                <ArrowRight className="w-4 h-4" />
+              </ProtectedBookingButton>
             </motion.div>
           </motion.div>
         </div>

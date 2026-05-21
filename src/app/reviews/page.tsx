@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
@@ -18,6 +19,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { ProtectedBookingButton } from "@/components/ProtectedBookingButton";
 
 interface Review {
   id: string;
@@ -34,6 +36,7 @@ interface Review {
 }
 
 export default function ReviewsPage() {
+  const router = useRouter();
   const [reviews, setReviews] = useState<Review[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [googleBusinessUrl, setGoogleBusinessUrl] = useState("");
@@ -125,20 +128,19 @@ export default function ReviewsPage() {
             </div>
 
             <div className="hidden lg:flex items-center gap-3">
-              <Link href="/reservation">
-                <Button
-                  className="bg-primary hover:bg-primary/90 text-primary-foreground px-5 py-1.5 shadow-md transition-colors duration-200 rounded-lg"
-                  style={{
-                    fontFamily: "var(--font-label)",
-                    fontSize: "12px",
-                    fontWeight: 500,
-                    letterSpacing: "0.1em",
-                    textTransform: "uppercase" as const,
-                  }}
-                >
-                  book now
-                </Button>
-              </Link>
+              <ProtectedBookingButton 
+                onClick={() => router.push("/reservation")}
+                className="bg-primary hover:bg-primary/90 text-primary-foreground px-5 py-1.5 shadow-md transition-colors duration-200 rounded-lg"
+                style={{
+                  fontFamily: "var(--font-label)",
+                  fontSize: "12px",
+                  fontWeight: 500,
+                  letterSpacing: "0.1em",
+                  textTransform: "uppercase" as const,
+                }}
+              >
+                book now
+              </ProtectedBookingButton>
             </div>
 
             <div className="lg:hidden">
@@ -187,15 +189,15 @@ export default function ReviewsPage() {
                 Contact
               </Link>
               <div className="border-t border-primary/10 pt-3">
-                <Link
-                  href="/reservation"
-                  onClick={() => setIsMenuOpen(false)}
-                  className="w-full"
+                <ProtectedBookingButton 
+                  onClick={() => {
+                    setIsMenuOpen(false);
+                    router.push("/reservation");
+                  }}
+                  className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold rounded-lg transition-colors duration-200"
                 >
-                  <Button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold rounded-lg transition-colors duration-200">
-                    book now
-                  </Button>
-                </Link>
+                  book now
+                </ProtectedBookingButton>
               </div>
             </div>
           </motion.div>
@@ -449,16 +451,28 @@ export default function ReviewsPage() {
                 {[
                   { name: "Book Now", href: "/reservation" },
                   { name: "Contact Us", href: "/#contact" },
+                  { name: "Terms & Conditions", href: "/terms-conditions" },
                   { name: "Room Types", href: "/#accommodations" },
-                ].map((link) => (
-                  <Link
-                    key={link.name}
-                    href={link.href}
-                    className="luxury-text text-white/80 hover:text-accent text-sm font-medium transition-colors duration-300 block"
-                  >
-                    {link.name}
-                  </Link>
-                ))}
+                ].map((link) => 
+                  link.name === "Book Now" ? (
+                    <ProtectedBookingButton
+                      key={link.name}
+                      onClick={() => router.push(link.href)}
+                      className="luxury-text text-white/80 hover:text-accent text-sm font-medium transition-colors duration-300 text-left leading-none"
+                      style={{ display: 'block', margin: 0, padding: 0, lineHeight: '1.2' }}
+                    >
+                      {link.name}
+                    </ProtectedBookingButton>
+                  ) : (
+                    <Link
+                      key={link.name}
+                      href={link.href}
+                      className="luxury-text text-white/80 hover:text-accent text-sm font-medium transition-colors duration-300 block"
+                    >
+                      {link.name}
+                    </Link>
+                  )
+                )}
               </nav>
             </motion.div>
 

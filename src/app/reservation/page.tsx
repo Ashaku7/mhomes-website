@@ -10,6 +10,7 @@ import ReCAPTCHA from "react-google-recaptcha";
 import { DayPicker, DateRange } from "react-day-picker";
 import "react-day-picker/dist/style.css";
 import { roomsApi, bookingsApi } from "@/lib/api";
+import { useBooking } from "@/context/BookingContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -832,6 +833,28 @@ function VerifyingPaymentOverlay({ isActive }: { isActive: boolean }) {
 function ReservationPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { isBookingEnabled } = useBooking();
+
+  // Redirect if bookings are disabled
+  useEffect(() => {
+    if (!isBookingEnabled) {
+      setTimeout(() => router.push('/'), 3000);
+    }
+  }, [isBookingEnabled, router]);
+
+  // Show placeholder if bookings disabled
+  if (!isBookingEnabled) {
+    return (
+      <div
+        style={{ backgroundColor: BG_LIGHT }}
+        className="min-h-screen flex items-center justify-center"
+      >
+        <div className="text-center space-y-4">
+          <p className="text-gray-600">Bookings are currently disabled. Redirecting to home...</p>
+        </div>
+      </div>
+    );
+  }
 
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);

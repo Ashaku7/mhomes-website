@@ -4,6 +4,8 @@ import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { Toaster } from "sonner";
 import { Cormorant_Garamond, DM_Sans, Montserrat } from "next/font/google";
+import { BookingProvider } from "@/context/BookingContext";
+import { RootLayoutClient } from "./_layout-client";
 
 const cormorantGaramond = Cormorant_Garamond({
   subsets: ["latin"],
@@ -57,8 +59,12 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           enableSystem
           disableTransitionOnChange
         >
-          {children}
-          <Toaster />
+          <BookingProvider>
+            <RootLayoutClient>
+              {children}
+            </RootLayoutClient>
+            <Toaster />
+          </BookingProvider>
         </ThemeProvider>
       </body>
     </html>

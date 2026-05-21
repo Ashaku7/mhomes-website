@@ -8,7 +8,14 @@ const allowedOrigins = [
   'https://mhomes-website-git-main-ashaku7s-projects.vercel.app',
 ]
 
+const BOOKINGS_ENABLED = false; // Set to true to enable bookings
+
 export default function middleware(req: NextRequest) {
+  // Block /reservation page if bookings are disabled
+  if (!BOOKINGS_ENABLED && req.nextUrl.pathname === '/reservation') {
+    return NextResponse.redirect(new URL('/', req.url));
+  }
+
   const response = NextResponse.next();
   const origin = req.headers.get('origin') || ''
 

@@ -1,13 +1,10 @@
-import type { Metadata } from "next";
+"use client";
+
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { Mail, Phone } from "lucide-react";
-
-export const metadata: Metadata = {
-  title: "Terms & Conditions | MHOMES Resort",
-  description:
-    "Read MHOMES Resort terms and conditions for bookings, cancellations, payments, guest conduct, privacy, and resort stay policies.",
-};
+import { ProtectedBookingButton } from "@/components/ProtectedBookingButton";
 
 const policySections = [
   {
@@ -63,6 +60,7 @@ const policySections = [
 ];
 
 export default function TermsAndConditionsPage() {
+  const router = useRouter();
   const effectiveDate = "April 25, 2026";
 
   return (
@@ -95,12 +93,12 @@ export default function TermsAndConditionsPage() {
               <span className="luxury-label text-[12px] text-[#6B3F2A]">Terms</span>
             </nav>
 
-            <Link
-              href="/reservation"
+            <ProtectedBookingButton 
+              onClick={() => router.push("/reservation")}
               className="inline-flex items-center rounded-lg bg-[#6B3F2A] px-4 py-2 text-xs font-medium text-white transition hover:bg-[#4F2D1E] luxury-label"
             >
               book now
-            </Link>
+            </ProtectedBookingButton>
           </div>
         </div>
       </header>
