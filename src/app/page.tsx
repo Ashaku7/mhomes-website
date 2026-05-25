@@ -135,7 +135,7 @@ function toISODate(d: Date | undefined): string {
 const gallerySlides = [
   {
     key: 'Pickle-Ball Courts',
-    image: '/pickleball.jpg',
+    image: '/pickleball2.png',
     title: 'Pickle-Ball Courts',
     description: 'Experience the thrill of pickle-ball on our state-of-the-art courts, designed for both casual play and competitive matches.'
   },
@@ -147,7 +147,7 @@ const gallerySlides = [
   },
   {
     key: 'woyage-daycations',
-    image: '/entrance.jpg',
+    image: '/entrance2.png',
     title: 'WOYAGE - DAYCATIONS',
     description: 'Indulge in a day of luxury and relaxation at our beautiful resort.'
   },
@@ -837,7 +837,7 @@ export default function Home() {
       name: 'Premium Room',
       description: 'Sophisticated rooms with modern amenities and garden or pool views',
       image: "/premium.jpg",
-      images: ["/premium.jpg", "/bathroom.jpg", "/outside.jpg"],
+      images: ["/premium1.png", "/premium2.png", "/premium3.png","/premium4.png","/premium5.png"],
       price: '₹5500/Night',
       bedType: 'King Bed',
       sqft: '30 sqm',
@@ -848,7 +848,7 @@ export default function Home() {
       name: 'Premium Plus Room',
       description: 'Comfortable studios perfect for couples seeking luxury and convenience',
       image: "/deluxe.jpg",
-      images: ["/premium-plus.jpg", "/bathroom.jpg", "/outside.jpg"],
+      images: ["/premium_plus1.png","/premium_plus2.png","/premium_plus3.png","/premium_plus4.png","/premium_plus5.png"],
       price: '₹6000/Night',
       bedType: 'King Bed',
       sqft: '30 sqm',
