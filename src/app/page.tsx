@@ -141,7 +141,7 @@ const gallerySlides = [
   },
   {
     key: 'RainDance Water Park',
-    image: '/waterfall.jpg',
+    image: '/swimmingpool2.png',
     title: 'RainDance Water Park',
     description: 'Dive into fun at RainDance Water Park, featuring exhilarating water showers for all ages.'
   },
@@ -153,13 +153,13 @@ const gallerySlides = [
   },
   {
     key: 'fountain-show',
-    image: '/fountain.png',
-    title: 'FOUNTAIN - NIGHT SHOW',
+    image: '/fountain.jpeg',
+    title: 'FOUNTAIN SHOW',
     description: 'Watch water, lights, and music come alive in a dazzling fountain spectacle every evening.'
   },
   {
     key: 'aquarium-lounge',
-    image: '/aquarium.png',
+    image: '/fishtank.png',
     title: 'AQUARIUM - MARINE LOUNGE',
     description: 'Step into an immersive underwater world where vibrant marine life turns every moment into wonder.'
   }
