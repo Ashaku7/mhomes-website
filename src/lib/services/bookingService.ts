@@ -535,6 +535,9 @@ export const createOnlineBooking = async (
       paymentStatus: "yet_to_pay",
       bookingStatus: "pending",
     };
+  }, {
+    timeout: 30000,
+    maxWait: 30000,
   });
 
   return booking;
@@ -607,6 +610,9 @@ export const confirmPayment = async (params: ConfirmPaymentParams) => {
       paidAt: payment.paymentDate,
       message: "Payment confirmed. Booking is now confirmed.",
     };
+  }, {
+    timeout: 30000,
+    maxWait: 30000,
   });
 
   return result;
@@ -684,6 +690,9 @@ export const updateBookingStatus = async (
     }
 
     return updatedBooking;
+  }, {
+    timeout: 30000,
+    maxWait: 30000,
   });
 
   let finalTotal = parseFloat(String(updated.totalAmount));
@@ -1016,6 +1025,9 @@ export const createOfflineBooking = async (
         paymentDate: paymentRecord.paymentDate,
       },
     };
+  }, {
+    timeout: 30000,
+    maxWait: 30000,
   });
 };
 
