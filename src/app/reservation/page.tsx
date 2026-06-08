@@ -1225,7 +1225,7 @@ function ReservationPageContent() {
       
       // Calculate total amount with discount and GST
       const totalAmount = Math.round(
-        ((searchResult.totalAmount || 0) - couponDiscount + ((searchResult.totalAmount || 0) * 0.05))
+        ((searchResult.totalAmount || 0) - couponDiscount + (((searchResult.totalAmount || 0) - couponDiscount) * 0.05))
       );
       
       const payload = {
@@ -2085,7 +2085,7 @@ function ReservationPageContent() {
                             <span className="text-gray-600">Tax (5% GST)</span>
                             <span className="text-gray-900">
                               {formatRs(
-                                Math.round((searchResult.totalAmount || 0) * 0.05),
+                                Math.round(((searchResult.totalAmount || 0) - couponDiscount) * 0.05),
                               )}
                             </span>
                           </div>
@@ -2100,7 +2100,7 @@ function ReservationPageContent() {
                             >
                               {formatRs(
                                 Math.round(
-                                  ((searchResult.totalAmount || 0) - couponDiscount) + ((searchResult.totalAmount || 0) * 0.05),
+                                  ((searchResult.totalAmount || 0) - couponDiscount) + (((searchResult.totalAmount || 0) - couponDiscount) * 0.05),
                                 ),
                               )}
                             </span>

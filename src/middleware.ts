@@ -8,7 +8,7 @@ const allowedOrigins = [
   'https://mhomes-website-git-main-ashaku7s-projects.vercel.app',
 ]
 
-const BOOKINGS_ENABLED = false; // Set to true to enable bookings
+const BOOKINGS_ENABLED = true; // Set to true to enable bookings
 
 export default function middleware(req: NextRequest) {
   // Block /reservation page if bookings are disabled

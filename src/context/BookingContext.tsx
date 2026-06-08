@@ -14,7 +14,7 @@ export function BookingProvider({ children }: { children: React.ReactNode }) {
   const [showBookingClosedModal, setShowBookingClosedModal] = useState(false);
 
   // Set to false to block bookings, true to enable
-  const isBookingEnabled = false;
+  const isBookingEnabled = true;
 
   return (
     <BookingContext.Provider

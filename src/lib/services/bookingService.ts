@@ -378,9 +378,10 @@ export const createOnlineBooking = async (
     return parsed;
   });
 
-  const bookingReference = await generateBookingReference();
-
   const booking = await prisma.$transaction(async (tx: any) => {
+    // Generate booking reference inside transaction so it rolls back on failure
+    const bookingReference = await generateBookingReference();
+
     // Lock rooms with SKIP LOCKED - only locks available rooms
     const lockedRooms = await tx.$queryRawUnsafe(
       `SELECT id, room_number, room_type, max_guests, price_per_night, status
@@ -438,8 +439,8 @@ export const createOnlineBooking = async (
     const discountAmount = couponDiscount || 0;
     const discountedSubtotal = originalSubtotal - discountAmount;
 
-    // GST is always 5% on original subtotal (before discount)
-    const gstAmount = parseFloat((originalSubtotal * 0.05).toFixed(2));
+    // GST is 5% on discounted subtotal (after discount)
+    const gstAmount = parseFloat((discountedSubtotal * 0.05).toFixed(2));
 
     // Total = discounted subtotal + GST
     const totalWithGst = parseFloat(
@@ -845,9 +846,11 @@ export const createOfflineBooking = async (
     booking.checkIn,
     booking.checkOut,
   );
-  const bookingReference = await generateBookingReference();
 
   return await prisma.$transaction(async (tx: any) => {
+    // Generate booking reference inside transaction so it rolls back on failure
+    const bookingReference = await generateBookingReference();
+
     const lockedRooms = await tx.$queryRawUnsafe(
       `SELECT id, room_number, room_type, max_guests, price_per_night, status
        FROM rooms

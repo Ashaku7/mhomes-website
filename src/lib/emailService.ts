@@ -205,7 +205,7 @@ export const sendBookingConfirmation = async (
                 </div>
                 ` : ''}
                 <div style="display: flex; justify-content: space-between; margin: 10px 0;">
-                  <span style="color: #6B6B6B;">GST (5% on original):</span>
+                  <span style="color: #6B6B6B;">GST (5%):</span>
                   <span style="color: #1A1A1A; font-weight: 600;">₹${Math.round(gst).toLocaleString("en-IN")}</span>
                 </div>
                 <div style="display: flex; justify-content: space-between; margin: 15px 0; padding-top: 10px; border-top: 2px solid #C9A84C;">
